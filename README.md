@@ -1,36 +1,173 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Todo App - Frontend Assignment
 
-## Getting Started
+A modern, responsive Todo application built with Next.js 15, featuring user authentication, task management, and a beautiful UI using HeroUI components.
 
-First, run the development server:
+## 🚀 Features
 
+- **User Authentication**: Secure login and registration system
+- **Task Management**: Create, complete, and delete todo items
+- **Persistent Storage**: Tasks are saved per user in localStorage
+- **Responsive Design**: Beautiful UI that works on all devices
+- **Route Protection**: Middleware-based authentication guards
+- **Modern UI**: Built with HeroUI components and Tailwind CSS
+- **TypeScript**: Full type safety throughout the application
+
+## 🛠️ Tech Stack
+
+- **Framework**: Next.js 15.5.4 with App Router
+- **Language**: TypeScript 5
+- **UI Library**: HeroUI React Components
+- **Styling**: Tailwind CSS 4
+- **Icons**: Heroicons
+- **Animations**: Framer Motion
+- **Fonts**: Geist Sans & Geist Mono
+
+## 📦 Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd frontend-assignment-nextjs
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Run the development server:
+```bash
+npm run dev
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+4. Open [http://localhost:3000](http://localhost:3000) in your browser.
 
-## Learn More
+## 🏗️ Project Structure
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── components/         # Reusable components
+│   │   └── TopBar.tsx     # Navigation bar component
+│   ├── login/             # Login page
+│   ├── register/          # Registration page
+│   ├── todolist/          # Todo list page and layout
+│   ├── globals.css        # Global styles
+│   ├── layout.tsx         # Root layout
+│   └── providers.tsx      # Context providers
+├── contexts/              # React contexts
+│   └── AuthContext.tsx    # Authentication context
+├── utils/                 # Utility functions
+│   ├── index.ts           # Utility exports
+│   └── translations.ts    # App translations
+├── assets/                # Static assets
+│   └── logo.svg           # Application logo
+└── middleware.ts          # Next.js middleware for route protection
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🔐 Authentication
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+The app includes a complete authentication system:
 
-## Deploy on Vercel
+- **Registration**: Users can create accounts with email, password, and name
+- **Login**: Secure login with email and password
+- **Session Management**: Persistent login state using localStorage and cookies
+- **Route Protection**: Middleware automatically redirects unauthenticated users
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### Default Credentials
+Since this is a demo application, you can register a new account or use any email/password combination (stored locally).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 📱 Usage
+
+### Getting Started
+1. Visit the application at `http://localhost:3000`
+2. Register a new account or login with existing credentials
+3. Start managing your tasks!
+
+### Managing Tasks
+- **Add Task**: Click the "Add Task" button or press Enter in the input field
+- **Complete Task**: Check the checkbox next to any task
+- **Delete Task**: Click the "Delete" button on any task
+- **View Progress**: See remaining tasks count at the bottom
+
+## 🎨 UI Components
+
+The application uses HeroUI components for a consistent and modern design:
+
+- **Cards**: For task items and main containers
+- **Inputs**: For forms and task input
+- **Buttons**: For actions and navigation
+- **Checkboxes**: For task completion status
+- **User Component**: For displaying user information
+
+## 🔧 Available Scripts
+
+- `npm run dev` - Start development server with Turbopack
+- `npm run build` - Build the application for production
+- `npm run start` - Start the production server
+- `npm run lint` - Run ESLint for code quality
+
+## 🌐 Internationalization
+
+The app includes a translation system in `src/utils/translations.ts` for easy localization:
+
+```typescript
+export const translations = {
+  app: {
+    title: 'Todo App',
+  },
+  todoList: {
+    welcome: "Hello",
+    emptyTitle: "You are amazing!",
+    emptyDescription: "There is no more task to do.",
+    addButton: "Add Task",
+  }
+} as const;
+```
+
+## 🔒 Security Features
+
+- **Route Protection**: Middleware prevents unauthorized access to protected routes
+- **Input Validation**: Form validation for email, password, and required fields
+- **Password Security**: Minimum password length requirements
+- **Session Management**: Secure cookie-based session handling
+
+## 🚀 Deployment
+
+The application can be deployed to any platform that supports Next.js:
+
+1. **Vercel** (Recommended):
+   ```bash
+   npm run build
+   # Deploy to Vercel
+   ```
+
+2. **Other Platforms**:
+   ```bash
+   npm run build
+   npm run start
+   ```
+
+## 📝 Development Notes
+
+- The app uses Next.js 15 with the new App Router
+- Turbopack is enabled for faster development builds
+- TypeScript is configured with strict type checking
+- ESLint is configured for code quality
+- Tailwind CSS 4 is used for styling with custom utilities
+
+## 🤝 Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Run tests and linting
+5. Submit a pull request
+
+## 📄 License
+
+This project is part of a frontend assignment and is for educational purposes.
+
+---
+
+Built with ❤️ using Next.js, TypeScript, and HeroUI
