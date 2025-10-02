@@ -3,6 +3,7 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { routes } from '@/routes/routes';
 
 export default function Home() {
   const router = useRouter();
@@ -10,9 +11,9 @@ export default function Home() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/todolist');
+      router.push(routes.todoList);
     } else {
-      router.push('/login');
+      router.push(routes.login);
     }
   }, [isAuthenticated, router]);
 
