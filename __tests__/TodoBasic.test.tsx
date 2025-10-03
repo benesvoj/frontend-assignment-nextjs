@@ -1,4 +1,5 @@
 import { render, screen } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
 import { TaskItem } from '@/app/todolist/components/TaskItem'
 import { Todo } from '@/types'
 
@@ -18,6 +19,9 @@ describe('Todo Basic Functionality', () => {
     text: 'Test Todo',
     completed: false,
     description: 'Test description',
+    userEmail: 'test@example.com',
+    createdAt: '2023-01-01T00:00:00.000Z',
+    updatedAt: '2023-01-01T00:00:00.000Z',
   }
 
   const mockOnToggle = jest.fn()
@@ -88,7 +92,9 @@ describe('Todo Basic Functionality', () => {
     expect(checkbox.checked).toBe(true)
   })
 
-  it('calls onToggle when checkbox is clicked', () => {
+  it('calls onToggle when checkbox is clicked', async () => {
+    const user = userEvent.setup()
+
     render(
       <TaskItem
         todo={mockTodo}
@@ -97,10 +103,10 @@ describe('Todo Basic Functionality', () => {
         onDelete={mockOnDelete}
       />
     )
-    
+
     const checkbox = screen.getByRole('checkbox')
-    checkbox.click()
-    
+    await user.click(checkbox)
+
     expect(mockOnToggle).toHaveBeenCalledWith(1)
   })
 })

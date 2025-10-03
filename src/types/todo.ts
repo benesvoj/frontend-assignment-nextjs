@@ -3,4 +3,7 @@ export interface Todo {
 	text: string;
 	completed: boolean;
 	description?: string;
+	userEmail: string;
+	createdAt: string;
+	updatedAt: string;
 }

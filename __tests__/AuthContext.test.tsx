@@ -2,6 +2,21 @@ import { renderHook, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ReactNode } from 'react'
 
+// Mock the API service
+jest.mock('@/services/api', () => ({
+  api: {
+    login: jest.fn(),
+    register: jest.fn(),
+  },
+  ApiError: class ApiError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'ApiError';
+    }
+  },
+}));
+const { api } = require('@/services/api');
+
 // Mock localStorage
 const localStorageMock = {
   getItem: jest.fn(),
@@ -68,33 +83,33 @@ describe('AuthContext', () => {
   })
 
   describe('login function', () => {
-    it('returns false for invalid credentials', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('returns false for invalid credentials', async () => {
+      api.login.mockResolvedValue({ success: false })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.login('test@example.com', 'wrongpassword')
-        expect(success).toBe(false)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'wrongpassword')
       })
-      
+      expect(success).toBe(false)
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
 
-    it('returns true and sets user for valid credentials', () => {
-      const mockUsers = [
-        { email: 'test@example.com', password: 'password123', name: 'Test User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('returns true and sets user for valid credentials', async () => {
+      const mockUser = { email: 'test@example.com', name: 'Test User' }
+      api.login.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.login('test@example.com', 'password123')
-        expect(success).toBe(true)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'password123')
       })
-      
+      expect(success).toBe(true)
+
       expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
@@ -103,147 +118,138 @@ describe('AuthContext', () => {
       )
     })
 
-    it('sets cookie on successful login', () => {
-      const mockUsers = [
-        { email: 'test@example.com', password: 'password123', name: 'Test User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('sets cookie on successful login', async () => {
+      const mockUser = { email: 'test@example.com', name: 'Test User' }
+      api.login.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        result.current.login('test@example.com', 'password123')
+
+      await act(async () => {
+        await result.current.login('test@example.com', 'password123')
       })
-      
+
       expect(document.cookie).toContain('user=')
       expect(document.cookie).toContain('path=/')
       expect(document.cookie).toContain('max-age=86400')
     })
 
-    it('handles empty users array', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('handles failed login', async () => {
+      api.login.mockResolvedValue({ success: false })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.login('test@example.com', 'password123')
-        expect(success).toBe(false)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'password123')
       })
-      
+      expect(success).toBe(false)
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
   })
 
   describe('register function', () => {
-    it('returns false when email already exists', () => {
-      const mockUsers = [
-        { email: 'existing@example.com', password: 'password123', name: 'Existing User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('returns false when email already exists', async () => {
+      api.register.mockResolvedValue({ success: false })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.register('existing@example.com', 'password123', 'New User')
-        expect(success).toBe(false)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.register('existing@example.com', 'password123', 'New User')
       })
-      
+      expect(success).toBe(false)
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
 
-    it('returns true and creates new user when email does not exist', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('returns true and creates new user when email does not exist', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.register('new@example.com', 'password123', 'New User')
-        expect(success).toBe(true)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
+      expect(success).toBe(true)
+
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'users',
-        JSON.stringify([{ email: 'new@example.com', password: 'password123', name: 'New User' }])
-      )
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'user',
         JSON.stringify({ email: 'new@example.com', name: 'New User' })
       )
     })
 
-    it('adds new user to existing users array', () => {
-      const existingUsers = [
-        { email: 'existing@example.com', password: 'password123', name: 'Existing User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(existingUsers))
-      
+    it('successfully registers a new user', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        result.current.register('new@example.com', 'password123', 'New User')
+
+      await act(async () => {
+        await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'users',
-        JSON.stringify([
-          { email: 'existing@example.com', password: 'password123', name: 'Existing User' },
-          { email: 'new@example.com', password: 'password123', name: 'New User' }
-        ])
-      )
+
+      expect(result.current.user).toEqual(mockUser)
+      expect(result.current.isAuthenticated).toBe(true)
     })
 
-    it('sets cookie on successful registration', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('sets cookie on successful registration', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        result.current.register('new@example.com', 'password123', 'New User')
+
+      await act(async () => {
+        await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
+
       expect(document.cookie).toContain('user=')
       expect(document.cookie).toContain('path=/')
       expect(document.cookie).toContain('max-age=86400')
     })
 
-    it('handles empty users array on registration', () => {
-      localStorageMock.getItem.mockReturnValue(null)
-      
+    it('handles registration success', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.register('new@example.com', 'password123', 'New User')
-        expect(success).toBe(true)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
+      expect(success).toBe(true)
+
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
     })
   })
 
   describe('logout function', () => {
-    it('clears user state and localStorage', () => {
+    it('clears user state and localStorage', async () => {
       const mockUser = { email: 'test@example.com', name: 'Test User' }
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUser))
-      
+      api.login.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
       // First login to set user
-      act(() => {
-        result.current.login('test@example.com', 'password123')
+      await act(async () => {
+        await result.current.login('test@example.com', 'password123')
       })
-      
+
       expect(result.current.isAuthenticated).toBe(true)
-      
+
       // Then logout
       act(() => {
         result.current.logout()
       })
-      
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('user')
@@ -251,61 +257,62 @@ describe('AuthContext', () => {
 
     it('clears cookie on logout', () => {
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
       act(() => {
         result.current.logout()
       })
-      
+
       expect(document.cookie).toContain('user=; path=/; max-age=0')
     })
   })
 
   describe('integration scenarios', () => {
-    it('handles complete login-logout cycle', () => {
-      const mockUsers = [
-        { email: 'test@example.com', password: 'password123', name: 'Test User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('handles complete login-logout cycle', async () => {
+      const mockUser = { email: 'test@example.com', name: 'Test User' }
+      api.login.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
       // Login
-      act(() => {
-        const success = result.current.login('test@example.com', 'password123')
-        expect(success).toBe(true)
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'password123')
       })
-      
+      expect(success).toBe(true)
+
       expect(result.current.isAuthenticated).toBe(true)
       expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
-      
+
       // Logout
       act(() => {
         result.current.logout()
       })
-      
+
       expect(result.current.isAuthenticated).toBe(false)
       expect(result.current.user).toBeNull()
     })
 
-    it('handles complete register-logout cycle', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('handles complete register-logout cycle', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
       // Register
-      act(() => {
-        const success = result.current.register('new@example.com', 'password123', 'New User')
-        expect(success).toBe(true)
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
+      expect(success).toBe(true)
+
       expect(result.current.isAuthenticated).toBe(true)
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
-      
+
       // Logout
       act(() => {
         result.current.logout()
       })
-      
+
       expect(result.current.isAuthenticated).toBe(false)
       expect(result.current.user).toBeNull()
     })

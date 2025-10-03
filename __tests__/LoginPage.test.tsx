@@ -1,4 +1,4 @@
-import { render, screen} from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import LoginPage from '@/app/login/page'
 
@@ -45,7 +45,7 @@ Object.defineProperty(window, 'localStorage', {
 describe('LoginPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockLogin.mockReturnValue(false)
+    mockLogin.mockResolvedValue(false)
   })
 
   it('renders login form with all required elements', () => {
@@ -60,42 +60,42 @@ describe('LoginPage', () => {
     expect(screen.getByRole('link', { name: 'Register' })).toBeTruthy()
   })
 
-  it('shows validation error when form is submitted with empty fields', async () => {
+  it('does not call login when form is submitted with empty fields', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
-    
+
     const submitButton = screen.getByRole('button', { name: 'Login' })
     await user.click(submitButton)
-    
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
+
+    // HTML5 validation prevents form submission, so login should not be called
     expect(mockLogin).not.toHaveBeenCalled()
   })
 
-  it('shows validation error when only email is provided', async () => {
+  it('does not call login when only email is provided', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
-    
+
     const emailInput = screen.getByLabelText('Email')
     const submitButton = screen.getByRole('button', { name: 'Login' })
-    
+
     await user.type(emailInput, 'test@example.com')
     await user.click(submitButton)
-    
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
+
+    // HTML5 validation prevents form submission due to empty password
     expect(mockLogin).not.toHaveBeenCalled()
   })
 
-  it('shows validation error when only password is provided', async () => {
+  it('does not call login when only password is provided', async () => {
     const user = userEvent.setup()
     render(<LoginPage />)
-    
+
     const passwordInput = screen.getByLabelText('Password')
     const submitButton = screen.getByRole('button', { name: 'Login' })
-    
+
     await user.type(passwordInput, 'password123')
     await user.click(submitButton)
-    
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
+
+    // HTML5 validation prevents form submission due to empty email
     expect(mockLogin).not.toHaveBeenCalled()
   })
 
@@ -116,34 +116,38 @@ describe('LoginPage', () => {
 
   it('navigates to todo list on successful login', async () => {
     const user = userEvent.setup()
-    mockLogin.mockReturnValue(true)
+    mockLogin.mockResolvedValue(true)
     render(<LoginPage />)
-    
+
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Password')
     const submitButton = screen.getByRole('button', { name: 'Login' })
-    
+
     await user.type(emailInput, 'test@example.com')
     await user.type(passwordInput, 'password123')
     await user.click(submitButton)
-    
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
   })
 
   it('shows error message on failed login', async () => {
     const user = userEvent.setup()
-    mockLogin.mockReturnValue(false)
+    mockLogin.mockResolvedValue(false)
     render(<LoginPage />)
-    
+
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Password')
     const submitButton = screen.getByRole('button', { name: 'Login' })
-    
+
     await user.type(emailInput, 'test@example.com')
     await user.type(passwordInput, 'wrongpassword')
     await user.click(submitButton)
-    
-    expect(screen.getByText('Invalid email or password')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Invalid email or password')).toBeTruthy()
+    })
     expect(mockPush).not.toHaveBeenCalled()
   })
 

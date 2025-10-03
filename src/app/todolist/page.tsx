@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Card, CardBody, CardHeader } from "@heroui/react";
+import { Button, Card, CardBody, CardHeader, Spinner } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { PlusIcon } from "@heroicons/react/16/solid";
 import { translations } from "@/utils";
@@ -11,10 +11,12 @@ import Image from "next/image";
 import { Todo } from "@/types";
 import { TodoSection } from "@/app/todolist/components/TodoSection";
 import { routes } from "@/routes/routes";
+import { api, ApiError } from "@/services/api";
 
 export default function TodoListPage() {
   const [todos, setTodos] = useState<Todo[]>([]);
-  const [isInitialized, setIsInitialized] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const t = translations;
@@ -25,18 +27,30 @@ export default function TodoListPage() {
       return;
     }
 
-    const storedTodos = localStorage.getItem(`todos_${user?.email}`);
-    if (storedTodos) {
-      setTodos(JSON.parse(storedTodos));
-    }
-    setIsInitialized(true);
+    loadTodos();
   }, [isAuthenticated, user, router]);
 
-  useEffect(() => {
-    if (user?.email && isInitialized) {
-      localStorage.setItem(`todos_${user.email}`, JSON.stringify(todos));
+  const loadTodos = async () => {
+    if (!user?.email) return;
+    
+    setLoading(true);
+    setError(null);
+    
+    try {
+      const response = await api.getTodos(user.email);
+      if (response.success) {
+        setTodos(response.todos);
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to load todos');
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [todos, user, isInitialized]);
+  };
 
   const navigateToCreateTask = () => {
     router.push(routes.todoListNew);
@@ -46,16 +60,41 @@ export default function TodoListPage() {
     router.push(routes.todoListId.replace(":id", taskId.toString()));
   };
 
-  const toggleTodo = (id: number) => {
-    setTodos(
-      todos.map((todo) =>
-        todo.id === id ? { ...todo, completed: !todo.completed } : todo
-      )
-    );
+  const toggleTodo = async (id: number) => {
+    if (!user?.email) return;
+    
+    const todo = todos.find(t => t.id === id);
+    if (!todo) return;
+
+    try {
+      const response = await api.updateTodo(id, { completed: !todo.completed }, user.email);
+      if (response.success) {
+        setTodos(todos.map(t => t.id === id ? response.todo : t));
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to update todo');
+      }
+    }
   };
 
-  const deleteTodo = (id: number) => {
-    setTodos(todos.filter((todo) => todo.id !== id));
+  const deleteTodo = async (id: number) => {
+    if (!user?.email) return;
+    
+    try {
+      const response = await api.deleteTodo(id, user.email);
+      if (response.success) {
+        setTodos(todos.filter(todo => todo.id !== id));
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to delete todo');
+      }
+    }
   };
 
   if (!isAuthenticated) {
@@ -67,6 +106,16 @@ export default function TodoListPage() {
     month: "long",
     year: "numeric",
   });
+
+  if (loading) {
+    return (
+      <Card>
+        <CardBody className="flex justify-center items-center py-8">
+          <Spinner size="lg" />
+        </CardBody>
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -88,6 +137,11 @@ export default function TodoListPage() {
         </Button>
       </CardHeader>
       <CardBody className="gap-6 px-6 pb-6">
+        {error && (
+          <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
+            {error}
+          </div>
+        )}
         {todos.filter((todo) => !todo.completed).length === 0 ? (
           <div className="flex flex-col justify-center items-center py-8 gap-4">
             <Image src={Logo} alt="Logo" width={80} />

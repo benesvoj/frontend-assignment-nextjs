@@ -14,7 +14,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isVisible, setIsVisible] = useState(false);
-  const { login, logout } = useAuth();
+  const { login, logout, loading } = useAuth();
   const router = useRouter();
   const t = translations;
 
@@ -25,7 +25,7 @@ export default function LoginPage() {
   
   const toggleVisibility = () => setIsVisible(!isVisible);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
 
@@ -34,7 +34,7 @@ export default function LoginPage() {
       return;
     }
 
-    const success = login(email, password);
+    const success = await login(email, password);
     if (success) {
       router.push(routes.todoList);
     } else {
@@ -85,7 +85,7 @@ export default function LoginPage() {
             />
             {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
-            <Button type="submit" color="primary" className="w-full">
+            <Button type="submit" color="primary" className="w-full" isLoading={loading}>
               {t.button.login}
             </Button>
           </form>

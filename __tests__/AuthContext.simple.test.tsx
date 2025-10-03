@@ -2,6 +2,20 @@ import { renderHook, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ReactNode } from 'react'
 
+// Mock the API service
+jest.mock('@/services/api', () => ({
+  api: {
+    login: jest.fn(),
+    register: jest.fn(),
+  },
+  ApiError: class ApiError extends Error {
+    constructor(message: string) {
+      super(message);
+      this.name = 'ApiError';
+    }
+  },
+}));
+
 // Mock localStorage
 const localStorageMock = {
   getItem: jest.fn(),
@@ -22,6 +36,9 @@ Object.defineProperty(document, 'cookie', {
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
 )
+
+// Get the mocked API
+const { api } = require('@/services/api');
 
 describe('AuthContext - Simple Tests', () => {
   beforeEach(() => {
@@ -64,34 +81,34 @@ describe('AuthContext - Simple Tests', () => {
   })
 
   describe('login function', () => {
-    it('returns false for invalid credentials', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('returns false for invalid credentials', async () => {
+      api.login.mockResolvedValue({ success: false })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.login('test@example.com', 'wrongpassword')
-        expect(success).toBe(false)
+
+      let success: boolean = true
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'wrongpassword')
       })
-      
+
+      expect(success).toBe(false)
       // User should remain null after failed login
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
 
-    it('returns true and sets user for valid credentials', () => {
-      const mockUsers = [
-        { email: 'test@example.com', password: 'password123', name: 'Test User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('returns true and sets user for valid credentials', async () => {
+      const mockUser = { email: 'test@example.com', name: 'Test User' }
+      api.login.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.login('test@example.com', 'password123')
-        expect(success).toBe(true)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.login('test@example.com', 'password123')
       })
-      
+
+      expect(success).toBe(true)
       expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
@@ -102,40 +119,36 @@ describe('AuthContext - Simple Tests', () => {
   })
 
   describe('register function', () => {
-    it('returns false when email already exists', () => {
-      const mockUsers = [
-        { email: 'existing@example.com', password: 'password123', name: 'Existing User' }
-      ]
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUsers))
-      
+    it('returns false when email already exists', async () => {
+      api.register.mockResolvedValue({ success: false })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.register('existing@example.com', 'password123', 'New User')
-        expect(success).toBe(false)
+
+      let success: boolean = true
+      await act(async () => {
+        success = await result.current.register('existing@example.com', 'password123', 'New User')
       })
-      
+
+      expect(success).toBe(false)
       // User should remain null after failed registration
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
     })
 
-    it('returns true and creates new user when email does not exist', () => {
-      localStorageMock.getItem.mockReturnValue('[]')
-      
+    it('returns true and creates new user when email does not exist', async () => {
+      const mockUser = { email: 'new@example.com', name: 'New User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
-      act(() => {
-        const success = result.current.register('new@example.com', 'password123', 'New User')
-        expect(success).toBe(true)
+
+      let success: boolean = false
+      await act(async () => {
+        success = await result.current.register('new@example.com', 'password123', 'New User')
       })
-      
+
+      expect(success).toBe(true)
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'users',
-        JSON.stringify([{ email: 'new@example.com', password: 'password123', name: 'New User' }])
-      )
       expect(localStorageMock.setItem).toHaveBeenCalledWith(
         'user',
         JSON.stringify({ email: 'new@example.com', name: 'New User' })
@@ -144,21 +157,24 @@ describe('AuthContext - Simple Tests', () => {
   })
 
   describe('logout function', () => {
-    it('clears user state and localStorage', () => {
+    it('clears user state and localStorage', async () => {
+      const mockUser = { email: 'test@example.com', name: 'Test User' }
+      api.register.mockResolvedValue({ success: true, user: mockUser })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
       // First set a user
-      act(() => {
-        result.current.register('test@example.com', 'password123', 'Test User')
+      await act(async () => {
+        await result.current.register('test@example.com', 'password123', 'Test User')
       })
-      
+
       expect(result.current.isAuthenticated).toBe(true)
-      
+
       // Then logout
       act(() => {
         result.current.logout()
       })
-      
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
       expect(localStorageMock.removeItem).toHaveBeenCalledWith('user')

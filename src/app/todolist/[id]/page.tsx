@@ -9,17 +9,20 @@ import {
   Input,
   Button,
   Textarea,
+  Spinner,
 } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { ArrowLeftIcon, CheckIcon } from "@heroicons/react/16/solid";
 import { translations } from "@/utils";
-import { Todo } from "@/types";
 import { routes } from "@/routes/routes";
+import { api, ApiError } from "@/services/api";
 
 export default function TaskFormPage() {
   const [taskName, setTaskName] = useState("");
   const [description, setDescription] = useState("");
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const { user, isAuthenticated } = useAuth();
   const router = useRouter();
   const params = useParams();
@@ -36,11 +39,20 @@ export default function TaskFormPage() {
     }
 
     if (isEditing) {
-      // Load existing task data
-      const storedTodos = localStorage.getItem(`todos_${user?.email}`);
-      if (storedTodos) {
-        const todos: Todo[] = JSON.parse(storedTodos);
-        const task = todos.find((todo) => todo.id === parseInt(taskId));
+      loadTask();
+    }
+  }, [isAuthenticated, user, router, taskId, isEditing]);
+
+  const loadTask = async () => {
+    if (!user?.email) return;
+    
+    setLoading(true);
+    setError("");
+    
+    try {
+      const response = await api.getTodos(user.email);
+      if (response.success) {
+        const task = response.todos.find((todo) => todo.id === parseInt(taskId));
         if (task) {
           setTaskName(task.text);
           setDescription(task.description || "");
@@ -48,44 +60,64 @@ export default function TaskFormPage() {
           router.push(routes.todoList);
         }
       }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to load task');
+      }
+    } finally {
+      setLoading(false);
     }
-  }, [isAuthenticated, user, router, taskId, isEditing]);
+  };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
+    setSaving(true);
 
     if (!taskName.trim()) {
       setError(t.taskForm.error);
+      setSaving(false);
       return;
     }
 
-    if (!user?.email) return;
-
-    const storedTodos = localStorage.getItem(`todos_${user.email}`);
-    const todos: Todo[] = storedTodos ? JSON.parse(storedTodos) : [];
-
-    if (isCreating) {
-      const newTask: Todo = {
-        id: Date.now(),
-        text: taskName.trim(),
-        completed: false,
-        description: description.trim() || undefined,
-      };
-      todos.push(newTask);
-    } else {
-      const taskIndex = todos.findIndex((todo) => todo.id === parseInt(taskId));
-      if (taskIndex !== -1) {
-        todos[taskIndex] = {
-          ...todos[taskIndex],
-          text: taskName.trim(),
-          description: description.trim() || undefined,
-        };
-      }
+    if (!user?.email) {
+      setSaving(false);
+      return;
     }
 
-    localStorage.setItem(`todos_${user.email}`, JSON.stringify(todos));
-    router.push(routes.todoList);
+    try {
+      if (isCreating) {
+        const response = await api.createTodo({
+          text: taskName.trim(),
+          completed: false,
+          description: description.trim() || undefined,
+          userEmail: user.email,
+        });
+        
+        if (response.success) {
+          router.push(routes.todoList);
+        }
+      } else {
+        const response = await api.updateTodo(parseInt(taskId), {
+          text: taskName.trim(),
+          description: description.trim() || undefined,
+        }, user.email);
+        
+        if (response.success) {
+          router.push(routes.todoList);
+        }
+      }
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message);
+      } else {
+        setError('Failed to save task');
+      }
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDiscard = () => {
@@ -94,6 +126,16 @@ export default function TaskFormPage() {
 
   if (!isAuthenticated) {
     return null;
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardBody className="flex justify-center items-center py-8">
+          <Spinner size="lg" />
+        </CardBody>
+      </Card>
+    );
   }
 
   return (
@@ -106,6 +148,7 @@ export default function TaskFormPage() {
             size="sm"
             onPress={handleDiscard}
             className="min-w-0"
+            isDisabled={saving}
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </Button>
@@ -138,6 +181,7 @@ export default function TaskFormPage() {
               size="sm"
               onPress={handleDiscard}
               className="rounded-4xl"
+              isDisabled={saving}
             >
               {t.button.discard}
             </Button>
@@ -146,7 +190,9 @@ export default function TaskFormPage() {
               color="primary"
               size="sm"
               className="rounded-4xl"
-              endContent={<CheckIcon className="w-4 h-4" />}
+              endContent={saving ? <Spinner size="sm" /> : <CheckIcon className="w-4 h-4" />}
+              isLoading={saving}
+              isDisabled={saving}
             >
               {isCreating ? t.button.create : t.button.save}
             </Button>

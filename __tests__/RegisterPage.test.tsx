@@ -1,4 +1,4 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import RegisterPage from '@/app/register/page'
 
@@ -26,6 +26,7 @@ jest.mock('@/contexts/AuthContext', () => ({
     user: null,
     register: mockRegister,
     isAuthenticated: false,
+    loading: false,
   }),
 }))
 
@@ -43,13 +44,13 @@ Object.defineProperty(window, 'localStorage', {
 describe('RegisterPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    mockRegister.mockReturnValue(false)
+    mockRegister.mockResolvedValue(false)
   })
 
   it('renders registration form with all required elements', () => {
     render(<RegisterPage />)
-    
-    expect(screen.getByText('Register')).toBeTruthy()
+
+    expect(screen.getByRole('heading', { name: 'Register' })).toBeTruthy()
     expect(screen.getByText('Create a new account')).toBeTruthy()
     expect(screen.getByLabelText('Name')).toBeTruthy()
     expect(screen.getByLabelText('Email')).toBeTruthy()
@@ -60,30 +61,32 @@ describe('RegisterPage', () => {
     expect(screen.getByRole('link', { name: 'Login' })).toBeTruthy()
   })
 
-  it('shows validation error when form is submitted with empty fields', async () => {
+  it('does not submit form when fields are empty due to HTML5 validation', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
-    
+
     const submitButton = screen.getByRole('button', { name: 'Register' })
     await user.click(submitButton)
-    
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
+
+    // Form should not submit due to HTML5 required validation
     expect(mockRegister).not.toHaveBeenCalled()
+    // No custom error message appears because HTML5 validation blocks the submit
+    expect(screen.queryByText('Please fill in all fields')).not.toBeTruthy()
   })
 
-  it('shows validation error when only some fields are provided', async () => {
+  it('does not submit form when only some fields are provided', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
-    
+
     const nameInput = screen.getByLabelText('Name')
     const emailInput = screen.getByLabelText('Email')
     const submitButton = screen.getByRole('button', { name: 'Register' })
-    
+
     await user.type(nameInput, 'John Doe')
     await user.type(emailInput, 'john@example.com')
     await user.click(submitButton)
-    
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
+
+    // Form should not submit due to HTML5 required validation on password fields
     expect(mockRegister).not.toHaveBeenCalled()
   })
 
@@ -148,42 +151,46 @@ describe('RegisterPage', () => {
 
   it('navigates to todo list on successful registration', async () => {
     const user = userEvent.setup()
-    mockRegister.mockReturnValue(true)
+    mockRegister.mockResolvedValue(true)
     render(<RegisterPage />)
-    
+
     const nameInput = screen.getByLabelText('Name')
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Password')
     const confirmPasswordInput = screen.getByLabelText('Confirm Password')
     const submitButton = screen.getByRole('button', { name: 'Register' })
-    
+
     await user.type(nameInput, 'John Doe')
     await user.type(emailInput, 'john@example.com')
     await user.type(passwordInput, 'password123')
     await user.type(confirmPasswordInput, 'password123')
     await user.click(submitButton)
-    
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
   })
 
   it('shows error message when email already exists', async () => {
     const user = userEvent.setup()
-    mockRegister.mockReturnValue(false)
+    mockRegister.mockResolvedValue(false)
     render(<RegisterPage />)
-    
+
     const nameInput = screen.getByLabelText('Name')
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Password')
     const confirmPasswordInput = screen.getByLabelText('Confirm Password')
     const submitButton = screen.getByRole('button', { name: 'Register' })
-    
+
     await user.type(nameInput, 'John Doe')
     await user.type(emailInput, 'existing@example.com')
     await user.type(passwordInput, 'password123')
     await user.type(confirmPasswordInput, 'password123')
     await user.click(submitButton)
-    
-    expect(screen.getByText('Email already exists')).toBeTruthy()
+
+    await waitFor(() => {
+      expect(screen.getByText('Email already exists')).toBeTruthy()
+    })
     expect(mockPush).not.toHaveBeenCalled()
   })
 
@@ -226,28 +233,33 @@ describe('RegisterPage', () => {
     expect(loginLink.getAttribute('href')).toBe('/login')
   })
 
-  it('clears error message when form is resubmitted', async () => {
+  it('clears error message when form is resubmitted after fixing errors', async () => {
     const user = userEvent.setup()
     render(<RegisterPage />)
-    
-    // First submit with empty fields to show error
-    const submitButton = screen.getByRole('button', { name: 'Register' })
-    await user.click(submitButton)
-    expect(screen.getByText('Please fill in all fields')).toBeTruthy()
-    
-    // Fill in all fields and submit again
+
     const nameInput = screen.getByLabelText('Name')
     const emailInput = screen.getByLabelText('Email')
     const passwordInput = screen.getByLabelText('Password')
     const confirmPasswordInput = screen.getByLabelText('Confirm Password')
-    
+    const submitButton = screen.getByRole('button', { name: 'Register' })
+
+    // First submit with mismatched passwords to show error
     await user.type(nameInput, 'John Doe')
     await user.type(emailInput, 'john@example.com')
     await user.type(passwordInput, 'password123')
+    await user.type(confirmPasswordInput, 'differentpassword')
+    await user.click(submitButton)
+
+    expect(screen.getByText('Passwords do not match')).toBeTruthy()
+
+    // Fix the password and submit again
+    await user.clear(confirmPasswordInput)
     await user.type(confirmPasswordInput, 'password123')
     await user.click(submitButton)
-    
-    // Error should be cleared
-    expect(screen.queryByText('Please fill in all fields')).not.toBeTruthy()
+
+    // Error should be cleared - wait for async operation
+    await waitFor(() => {
+      expect(screen.queryByText('Passwords do not match')).not.toBeTruthy()
+    })
   })
 })

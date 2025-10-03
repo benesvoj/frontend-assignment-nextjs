@@ -14,11 +14,11 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const { register } = useAuth();
+  const { register, loading } = useAuth();
   const router = useRouter();
   const t = translations;
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
 
@@ -37,7 +37,7 @@ export default function RegisterPage() {
       return;
     }
 
-    const success = register(email, password, name);
+    const success = await register(email, password, name);
     if (success) {
       router.push(routes.todoList);
     } else {

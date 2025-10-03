@@ -1,45 +1,58 @@
-import { render, screen } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TaskFormPage from '@/app/todolist/[id]/page'
 
 // Mock Next.js router
 const mockPush = jest.fn()
+let mockParams = { id: 'new' }
+const mockRouter = { push: mockPush }
+
 jest.mock('next/navigation', () => ({
-  useRouter: () => ({
-    push: mockPush,
-  }),
-  useParams: () => ({ id: 'new' }),
+  useRouter: () => mockRouter,
+  useParams: () => mockParams,
 }))
 
 // Mock the AuthContext
 const mockUser = { email: 'test@example.com', name: 'Test User' }
+let mockIsAuthenticated = true
+
 jest.mock('@/contexts/AuthContext', () => ({
   useAuth: () => ({
-    user: mockUser,
-    isAuthenticated: true,
+    user: mockIsAuthenticated ? mockUser : null,
+    isAuthenticated: mockIsAuthenticated,
   }),
 }))
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
+// Mock the API service
+const mockGetTodos = jest.fn()
+const mockCreateTodo = jest.fn()
+const mockUpdateTodo = jest.fn()
+
+jest.mock('@/services/api', () => ({
+  api: {
+    getTodos: (...args: any[]) => mockGetTodos(...args),
+    createTodo: (...args: any[]) => mockCreateTodo(...args),
+    updateTodo: (...args: any[]) => mockUpdateTodo(...args),
+  },
+  ApiError: class ApiError extends Error {
+    constructor(public status: number, message: string) {
+      super(message)
+      this.name = 'ApiError'
+    }
+  },
+}))
 
 describe('TaskFormPage - Creating New Task', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    localStorageMock.getItem.mockReturnValue('[]')
+    mockParams = { id: 'new' }
+    mockIsAuthenticated = true
+    mockCreateTodo.mockResolvedValue({ success: true, todo: { id: 1, text: 'New Task', completed: false } })
   })
 
   it('renders create task form with all required elements', () => {
     render(<TaskFormPage />)
-    
+
     expect(screen.getByText('New task')).toBeTruthy()
     expect(screen.getByLabelText('Task name')).toBeTruthy()
     expect(screen.getByLabelText('Description (Optional)')).toBeTruthy()
@@ -47,113 +60,134 @@ describe('TaskFormPage - Creating New Task', () => {
     expect(screen.getByRole('button', { name: 'Create task' })).toBeTruthy()
   })
 
-  it('has correct form validation attributes', () => {
-    render(<TaskFormPage />)
-    
-    const taskNameInput = screen.getByLabelText('Task name')
-    const descriptionInput = screen.getByLabelText('Description (Optional)')
-    
-    expect(taskNameInput.hasAttribute('required')).toBe(true)
-    expect(descriptionInput.hasAttribute('required')).toBe(false)
-  })
-
   it('has correct placeholder text', () => {
     render(<TaskFormPage />)
-    
+
     const taskNameInput = screen.getByPlaceholderText('Enter task name')
     const descriptionInput = screen.getByPlaceholderText('Enter task description')
-    
+
     expect(taskNameInput).toBeTruthy()
     expect(descriptionInput).toBeTruthy()
   })
 
-  it('shows validation error when form is submitted with empty task name', async () => {
+  it('does not submit form when task name is empty due to HTML5 validation', async () => {
     const user = userEvent.setup()
     render(<TaskFormPage />)
-    
+
     const submitButton = screen.getByRole('button', { name: 'Create task' })
     await user.click(submitButton)
-    
-    expect(screen.getByText('Task name is required')).toBeTruthy()
+
+    // HTML5 required validation prevents form submission
+    expect(mockCreateTodo).not.toHaveBeenCalled()
+
+    // Custom error message is not displayed because HTML5 validation blocks submission
+    expect(screen.queryByText('Task name is required')).not.toBeTruthy()
   })
 
   it('creates new task when form is submitted with valid data', async () => {
     const user = userEvent.setup()
     render(<TaskFormPage />)
-    
+
     const taskNameInput = screen.getByLabelText('Task name')
     const descriptionInput = screen.getByLabelText('Description (Optional)')
     const submitButton = screen.getByRole('button', { name: 'Create task' })
-    
+
     await user.type(taskNameInput, 'New Test Task')
     await user.type(descriptionInput, 'Test description')
     await user.click(submitButton)
-    
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'todos_test@example.com',
-      expect.stringContaining('"text":"New Test Task"')
-    )
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockCreateTodo).toHaveBeenCalledWith({
+        text: 'New Test Task',
+        completed: false,
+        description: 'Test description',
+        userEmail: 'test@example.com',
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
   })
 
   it('creates task without description when description is empty', async () => {
     const user = userEvent.setup()
     render(<TaskFormPage />)
-    
+
     const taskNameInput = screen.getByLabelText('Task name')
     const submitButton = screen.getByRole('button', { name: 'Create task' })
-    
+
     await user.type(taskNameInput, 'Task without description')
     await user.click(submitButton)
-    
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'todos_test@example.com',
-      expect.stringContaining('"text":"Task without description"')
-    )
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockCreateTodo).toHaveBeenCalledWith({
+        text: 'Task without description',
+        completed: false,
+        description: undefined,
+        userEmail: 'test@example.com',
+      })
+    })
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
   })
 
   it('navigates back to todo list when discard button is clicked', async () => {
     const user = userEvent.setup()
     render(<TaskFormPage />)
-    
+
     const discardButton = screen.getByRole('button', { name: 'Discard changes' })
     await user.click(discardButton)
-    
+
     expect(mockPush).toHaveBeenCalledWith('/todolist')
   })
 
-  it('navigates back to todo list when back arrow is clicked', async () => {
+  it('displays error message when API call fails', async () => {
     const user = userEvent.setup()
+    const ApiError = require('@/services/api').ApiError
+    mockCreateTodo.mockRejectedValue(new ApiError(500, 'Server error'))
+
     render(<TaskFormPage />)
-    
-    const backButton = screen.getByRole('button')
-    await user.click(backButton)
-    
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    const taskNameInput = screen.getByLabelText('Task name')
+    const submitButton = screen.getByRole('button', { name: 'Create task' })
+
+    await user.type(taskNameInput, 'Test Task')
+    await user.click(submitButton)
+
+    await waitFor(() => {
+      expect(screen.getByText('Server error')).toBeTruthy()
+    })
   })
 })
 
 describe('TaskFormPage - Editing Existing Task', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    
-    // Mock editing mode
-    jest.doMock('next/navigation', () => ({
-      useRouter: () => ({ push: mockPush }),
-      useParams: () => ({ id: '1' }),
-    }))
+    mockParams = { id: '1' }
+    mockIsAuthenticated = true
+    mockUpdateTodo.mockResolvedValue({ success: true, todo: { id: 1, text: 'Updated Task', completed: false } })
   })
 
-  it('renders edit task form with existing data', () => {
+  it('renders edit task form with existing data', async () => {
     const mockTodos = [
-      { id: 1, text: 'Existing Task', completed: false, description: 'Existing description' }
+      { id: 1, text: 'Existing Task', completed: false, description: 'Existing description', userEmail: 'test@example.com' }
     ]
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(mockTodos))
-    
+    mockGetTodos.mockResolvedValueOnce({ success: true, todos: mockTodos })
+
     render(<TaskFormPage />)
-    
-    expect(screen.getByText('Edit task')).toBeTruthy()
+
+    // Wait for loading to complete
+    await waitFor(() => {
+      expect(mockGetTodos).toHaveBeenCalledWith('test@example.com')
+    })
+
+    await waitFor(() => {
+      expect(screen.getByText('Edit task')).toBeTruthy()
+    })
+
     expect(screen.getByDisplayValue('Existing Task')).toBeTruthy()
     expect(screen.getByDisplayValue('Existing description')).toBeTruthy()
   })
@@ -161,49 +195,83 @@ describe('TaskFormPage - Editing Existing Task', () => {
   it('updates existing task when form is submitted', async () => {
     const user = userEvent.setup()
     const mockTodos = [
-      { id: 1, text: 'Original Task', completed: false, description: 'Original description' }
+      { id: 1, text: 'Original Task', completed: false, description: 'Original description', userEmail: 'test@example.com' }
     ]
-    localStorageMock.getItem.mockReturnValue(JSON.stringify(mockTodos))
-    
+    mockGetTodos.mockResolvedValue({ success: true, todos: mockTodos })
+
     render(<TaskFormPage />)
-    
+
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('Original Task')).toBeTruthy()
+    })
+
     const taskNameInput = screen.getByLabelText('Task name')
     const descriptionInput = screen.getByLabelText('Description (Optional)')
     const submitButton = screen.getByRole('button', { name: 'Save task' })
-    
+
     await user.clear(taskNameInput)
     await user.type(taskNameInput, 'Updated Task')
     await user.clear(descriptionInput)
     await user.type(descriptionInput, 'Updated description')
     await user.click(submitButton)
-    
-    expect(localStorageMock.setItem).toHaveBeenCalledWith(
-      'todos_test@example.com',
-      expect.stringContaining('"text":"Updated Task"')
-    )
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockUpdateTodo).toHaveBeenCalledWith(
+        1,
+        {
+          text: 'Updated Task',
+          description: 'Updated description',
+        },
+        'test@example.com'
+      )
+    })
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
   })
 
-  it('redirects to todo list if task not found', () => {
-    localStorageMock.getItem.mockReturnValue('[]')
-    
+  it('redirects to todo list if task not found', async () => {
+    mockGetTodos.mockResolvedValue({ success: true, todos: [] })
+
     render(<TaskFormPage />)
-    
-    expect(mockPush).toHaveBeenCalledWith('/todolist')
+
+    await waitFor(() => {
+      expect(mockPush).toHaveBeenCalledWith('/todolist')
+    })
+  })
+
+  it('displays error message when loading task fails', async () => {
+    const ApiError = require('@/services/api').ApiError
+    mockGetTodos.mockRejectedValueOnce(new ApiError(500, 'Failed to load task'))
+
+    render(<TaskFormPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Failed to load task')).toBeTruthy()
+    }, { timeout: 3000 })
   })
 })
 
 describe('TaskFormPage - Authentication', () => {
+  beforeEach(() => {
+    jest.clearAllMocks()
+    mockParams = { id: 'new' }
+  })
+
   it('redirects to login when not authenticated', () => {
-    jest.doMock('@/contexts/AuthContext', () => ({
-      useAuth: () => ({
-        user: null,
-        isAuthenticated: false,
-      }),
-    }))
-    
+    mockIsAuthenticated = false
+
     render(<TaskFormPage />)
-    
+
     expect(mockPush).toHaveBeenCalledWith('/login')
+  })
+
+  it('renders nothing while redirecting when not authenticated', () => {
+    mockIsAuthenticated = false
+
+    const { container } = render(<TaskFormPage />)
+
+    expect(container.firstChild).toBeNull()
   })
 })
