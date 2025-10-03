@@ -3,7 +3,7 @@ import { Todo } from '@/types'
 
 // In-memory storage for demo purposes
 // In a real app, this would be a database
-let todos: Todo[] = []
+const todos: Todo[] = []
 
 export async function GET(request: NextRequest) {
   try {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Card, CardBody, CardHeader, Spinner } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
@@ -30,7 +30,7 @@ export default function TodoListPage() {
     loadTodos();
   }, [isAuthenticated, user, router]);
 
-  const loadTodos = async () => {
+  const loadTodos = useCallback(async () => {
     if (!user?.email) return;
     
     setLoading(true);
@@ -50,7 +50,7 @@ export default function TodoListPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.email]);
 
   const navigateToCreateTask = () => {
     router.push(routes.todoListNew);

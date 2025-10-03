@@ -21,7 +21,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     logout();
-  }, []);
+  }, [logout]);
   
   const toggleVisibility = () => setIsVisible(!isVisible);
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Card,
@@ -43,7 +43,7 @@ export default function TaskFormPage() {
     }
   }, [isAuthenticated, user, router, taskId, isEditing]);
 
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
     if (!user?.email) return;
     
     setLoading(true);
@@ -69,7 +69,7 @@ export default function TaskFormPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.email, taskId, router]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
