@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthUser } from '@/types'
-
-// In-memory storage for demo purposes
-// In a real app, this would be a database
-const users: AuthUser[] = []
+import { findUserByCredentials } from '@/utils/serverUtils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    const user = users.find(u => u.email === email && u.password === password)
+    const user = findUserByCredentials(email, password)
     
     if (!user) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })

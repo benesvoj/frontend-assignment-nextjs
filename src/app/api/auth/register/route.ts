@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { AuthUser } from '@/types'
-
-// In-memory storage for demo purposes
-// In a real app, this would be a database
-const users: AuthUser[] = []
+import { findUserByEmail, addUser } from '@/utils/serverUtils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,19 +15,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = users.find(u => u.email === email)
+    const existingUser = findUserByEmail(email)
     if (existingUser) {
       return NextResponse.json({ error: 'Email already exists' }, { status: 409 })
     }
 
-    const newUser: AuthUser = {
-      name,
-      email,
-      password,
-      createdAt: new Date().toISOString()
-    }
-
-    users.push(newUser)
+    const newUser = addUser(name, email, password)
 
     // Return user without password
     const { password: _unused, ...userWithoutPassword } = newUser

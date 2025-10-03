@@ -21,15 +21,6 @@ export default function TodoListPage() {
   const router = useRouter();
   const t = translations;
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push(routes.login);
-      return;
-    }
-
-    loadTodos();
-  }, [isAuthenticated, user, router]);
-
   const loadTodos = useCallback(async () => {
     if (!user?.email) return;
     
@@ -51,6 +42,15 @@ export default function TodoListPage() {
       setLoading(false);
     }
   }, [user?.email]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push(routes.login);
+      return;
+    }
+
+    loadTodos();
+  }, [isAuthenticated, user, router, loadTodos]);
 
   const navigateToCreateTask = () => {
     router.push(routes.todoListNew);

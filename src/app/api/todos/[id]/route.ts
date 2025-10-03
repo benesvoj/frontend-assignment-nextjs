@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Todo } from '@/types'
-
-// In-memory storage for demo purposes
-// In a real app, this would be a database
-const todos: Todo[] = []
+import { updateTodoInStorage, deleteTodoFromStorage } from '@/utils/serverUtils'
 
 export async function PUT(
   request: NextRequest,
@@ -19,21 +15,15 @@ export async function PUT(
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    const todoIndex = todos.findIndex(todo => todo.id === todoId && todo.userEmail === userEmail)
-    
-    if (todoIndex === -1) {
+    const updatedTodo = updateTodoInStorage(todoId, {
+      text,
+      description,
+      completed
+    }, userEmail)
+
+    if (!updatedTodo) {
       return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
     }
-
-    const updatedTodo: Todo = {
-      ...todos[todoIndex],
-      text: text || todos[todoIndex].text,
-      description: description !== undefined ? description : todos[todoIndex].description,
-      completed: completed !== undefined ? completed : todos[todoIndex].completed,
-      updatedAt: new Date().toISOString()
-    }
-
-    todos[todoIndex] = updatedTodo
 
     return NextResponse.json({ 
       success: true, 
@@ -59,13 +49,11 @@ export async function DELETE(
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    const todoIndex = todos.findIndex(todo => todo.id === todoId && todo.userEmail === userEmail)
-    
-    if (todoIndex === -1) {
+    const success = deleteTodoFromStorage(todoId, userEmail)
+
+    if (!success) {
       return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
     }
-
-    todos.splice(todoIndex, 1)
 
     return NextResponse.json({ 
       success: true, 

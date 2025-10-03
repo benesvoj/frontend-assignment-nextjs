@@ -32,17 +32,6 @@ export default function TaskFormPage() {
   const isEditing = taskId !== "new";
   const isCreating = taskId === "new";
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push(routes.login);
-      return;
-    }
-
-    if (isEditing) {
-      loadTask();
-    }
-  }, [isAuthenticated, user, router, taskId, isEditing]);
-
   const loadTask = useCallback(async () => {
     if (!user?.email) return;
     
@@ -70,6 +59,17 @@ export default function TaskFormPage() {
       setLoading(false);
     }
   }, [user?.email, taskId, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push(routes.login);
+      return;
+    }
+
+    if (isEditing) {
+      loadTask();
+    }
+  }, [isAuthenticated, user, router, taskId, isEditing, loadTask]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

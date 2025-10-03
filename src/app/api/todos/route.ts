@@ -1,9 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Todo } from '@/types'
-
-// In-memory storage for demo purposes
-// In a real app, this would be a database
-const todos: Todo[] = []
+import { getTodosByEmail, addTodo } from '@/utils/serverUtils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,8 +10,8 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    // Filter todos by user email
-    const userTodos = todos.filter(todo => todo.userEmail === userEmail)
+    // Get todos for the user
+    const userTodos = getTodosByEmail(userEmail)
     
     return NextResponse.json({ 
       success: true, 
@@ -36,17 +32,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text and userEmail are required' }, { status: 400 })
     }
 
-    const newTodo: Todo = {
-      id: Date.now(), // Simple ID generation
-      text,
-      description: description || undefined,
-      completed: false,
-      userEmail,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    }
-
-    todos.push(newTodo)
+    const newTodo = addTodo(text, description, userEmail)
 
     return NextResponse.json({ 
       success: true, 
