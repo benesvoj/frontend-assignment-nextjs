@@ -3,7 +3,7 @@ import { AuthUser } from '@/types'
 
 // In-memory storage for demo purposes
 // In a real app, this would be a database
-let users: AuthUser[] = []
+const users: AuthUser[] = []
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +34,7 @@ export async function POST(request: NextRequest) {
     users.push(newUser)
 
     // Return user without password
-    const { password: _, ...userWithoutPassword } = newUser
+    const { password: _unused, ...userWithoutPassword } = newUser
 
     return NextResponse.json({ 
       success: true, 
