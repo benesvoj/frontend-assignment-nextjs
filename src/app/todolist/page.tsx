@@ -21,11 +21,13 @@ export default function TodoListPage() {
   const router = useRouter();
   const t = translations;
 
-  const loadTodos = useCallback(async () => {
+  const loadTodos = useCallback(async (clearError = true) => {
     if (!user?.email) return;
     
     setLoading(true);
-    setError(null);
+    if (clearError) {
+      setError(null); // Only clear error when explicitly requested
+    }
     
     try {
       const response = await api.getTodos(user.email);
@@ -49,8 +51,8 @@ export default function TodoListPage() {
       return;
     }
 
-    loadTodos();
-  }, [isAuthenticated, user, router, loadTodos]);
+    loadTodos(false); // Don't clear errors when loading todos on mount
+  }, [isAuthenticated, user, router]);
 
   const navigateToCreateTask = () => {
     router.push(routes.todoListNew);
