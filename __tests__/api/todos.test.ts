@@ -3,7 +3,7 @@ import { GET, POST } from '@/app/api/todos/route'
 import { PUT, DELETE } from '@/app/api/todos/[id]/route'
 
 // Mock the in-memory storage
-const mockTodos: any[] = []
+const mockTodos: unknown[] = []
 
 // Override the global todos array
 jest.mock('@/app/api/todos/route', () => {
@@ -141,7 +141,7 @@ describe('/api/todos/[id]', () => {
         },
       })
       
-      const response = await PUT(request, { params: { id: createdTodoId.toString() } })
+      const response = await PUT(request, { params: Promise.resolve({ id: createdTodoId.toString() }) })
       const data = await response.json()
       
       expect(response.status).toBe(200)
@@ -169,7 +169,7 @@ describe('/api/todos/[id]', () => {
         },
       })
       
-      const response = await PUT(request, { params: { id: '99999' } })
+      const response = await PUT(request, { params: Promise.resolve({ id: '99999' }) })
       const data = await response.json()
       
       expect(response.status).toBe(404)
@@ -181,7 +181,7 @@ describe('/api/todos/[id]', () => {
     it('should delete a todo', async () => {
       const request = new NextRequest(`http://localhost:3000/api/todos/${createdTodoId}?userEmail=test@example.com`)
       
-      const response = await DELETE(request, { params: { id: createdTodoId.toString() } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: createdTodoId.toString() }) })
       const data = await response.json()
       
       expect(response.status).toBe(200)
@@ -192,7 +192,7 @@ describe('/api/todos/[id]', () => {
     it('should return 404 if todo not found', async () => {
       const request = new NextRequest('http://localhost:3000/api/todos/99999?userEmail=test@example.com')
       
-      const response = await DELETE(request, { params: { id: '99999' } })
+      const response = await DELETE(request, { params: Promise.resolve({ id: '99999' }) })
       const data = await response.json()
       
       expect(response.status).toBe(404)

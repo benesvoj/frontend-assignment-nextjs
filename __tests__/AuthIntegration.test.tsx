@@ -1,5 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import '@testing-library/jest-dom'
 import LoginPage from '@/app/login/page'
 import RegisterPage from '@/app/register/page'
 import { AuthProvider } from '@/contexts/AuthContext'
@@ -17,7 +18,11 @@ jest.mock('@/services/api', () => ({
     }
   },
 }));
-const { api } = require('@/services/api');
+
+import { api } from '@/services/api';
+
+// Cast api to jest mock for type safety
+const mockApi = api as jest.Mocked<typeof api>
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -67,7 +72,7 @@ describe('Authentication Integration Tests', () => {
   describe('Complete Registration Flow', () => {
     it('allows user to register and automatically logs them in', async () => {
       const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      mockApi.register.mockResolvedValue({ success: true, user: mockUser })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
@@ -101,7 +106,7 @@ describe('Authentication Integration Tests', () => {
     })
 
     it('prevents duplicate email registration', async () => {
-      api.register.mockResolvedValue({ success: false })
+      mockApi.register.mockResolvedValue({ success: false, user: { email: '', name: '' } })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
@@ -129,7 +134,7 @@ describe('Authentication Integration Tests', () => {
   describe('Complete Login Flow', () => {
     it('allows registered user to login', async () => {
       const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
+      mockApi.login.mockResolvedValue({ success: true, user: mockUser })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
@@ -149,7 +154,7 @@ describe('Authentication Integration Tests', () => {
     })
 
     it('rejects login with wrong password', async () => {
-      api.login.mockResolvedValue({ success: false })
+      mockApi.login.mockResolvedValue({ success: false, user: { email: '', name: '' } })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
@@ -170,7 +175,7 @@ describe('Authentication Integration Tests', () => {
     })
 
     it('rejects login with non-existent email', async () => {
-      api.login.mockResolvedValue({ success: false })
+      mockApi.login.mockResolvedValue({ success: false, user: { email: '', name: '' } })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
@@ -252,7 +257,7 @@ describe('Authentication Integration Tests', () => {
   describe('Error Handling Integration', () => {
     it('clears errors when form is resubmitted with valid data', async () => {
       const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      mockApi.register.mockResolvedValue({ success: true, user: mockUser })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })

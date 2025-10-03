@@ -26,9 +26,9 @@ jest.mock("@/app/todolist/components/TaskItem", () => ({
 
 describe("TodoSection", () => {
   const mockTodos: Todo[] = [
-    { id: 1, text: "Todo 1", completed: false },
-    { id: 2, text: "Todo 2", completed: false },
-    { id: 3, text: "Todo 3", completed: false },
+    { id: 1, text: "Todo 1", completed: false, userEmail: "test@example.com", createdAt: "2023-01-01T00:00:00.000Z", updatedAt: "2023-01-01T00:00:00.000Z" },
+    { id: 2, text: "Todo 2", completed: false, userEmail: "test@example.com", createdAt: "2023-01-01T00:00:00.000Z", updatedAt: "2023-01-01T00:00:00.000Z" },
+    { id: 3, text: "Todo 3", completed: false, userEmail: "test@example.com", createdAt: "2023-01-01T00:00:00.000Z", updatedAt: "2023-01-01T00:00:00.000Z" },
   ];
 
   const mockOnToggle = jest.fn();
@@ -157,14 +157,17 @@ describe("TodoSection", () => {
 
   it("handles todos with different properties", () => {
     const mixedTodos: Todo[] = [
-      { id: 1, text: "Simple Todo", completed: false },
+      { id: 1, text: "Simple Todo", completed: false, userEmail: "test@example.com", createdAt: "2023-01-01T00:00:00.000Z", updatedAt: "2023-01-01T00:00:00.000Z" },
       {
         id: 2,
         text: "Todo with Description",
         completed: false,
         description: "This is a description",
+        userEmail: "test@example.com",
+        createdAt: "2023-01-01T00:00:00.000Z",
+        updatedAt: "2023-01-01T00:00:00.000Z"
       },
-      { id: 3, text: "Completed Todo", completed: true },
+      { id: 3, text: "Completed Todo", completed: true, userEmail: "test@example.com", createdAt: "2023-01-01T00:00:00.000Z", updatedAt: "2023-01-01T00:00:00.000Z" },
     ];
 
     render(

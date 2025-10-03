@@ -1,5 +1,6 @@
 import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import '@testing-library/jest-dom'
 import TodoListPage from '@/app/todolist/page'
 import { api } from '@/services/api'
 

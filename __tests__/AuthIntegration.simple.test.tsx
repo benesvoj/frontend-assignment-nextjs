@@ -1,5 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import '@testing-library/jest-dom'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 
 // Mock Next.js router
@@ -24,9 +25,14 @@ jest.mock('@/services/api', () => ({
   }
 }))
 
+import { api, ApiError } from '@/services/api'
+
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
 )
+
+// Cast api to jest mock for type safety
+const mockApi = api as jest.Mocked<typeof api>
 
 // Simple test component that uses AuthContext
 function TestLoginComponent() {
@@ -71,8 +77,7 @@ describe('Authentication Integration Tests - Simplified', () => {
 
   describe('Login Flow', () => {
     it('should handle successful login', async () => {
-      const { api } = require('@/services/api')
-      api.login.mockResolvedValueOnce({
+      mockApi.login.mockResolvedValueOnce({
         success: true,
         user: { name: 'Test User', email: 'test@example.com' }
       })
@@ -82,12 +87,11 @@ describe('Authentication Integration Tests - Simplified', () => {
       const loginButton = screen.getByText('Login')
       await userEvent.click(loginButton)
       
-      expect(api.login).toHaveBeenCalledWith('test@example.com', 'password123')
+      expect(mockApi.login).toHaveBeenCalledWith('test@example.com', 'password123')
     })
 
     it('should handle login error', async () => {
-      const { api, ApiError } = require('@/services/api')
-      api.login.mockRejectedValueOnce(new ApiError(401, 'Invalid credentials'))
+      mockApi.login.mockRejectedValueOnce(new ApiError(401, 'Invalid credentials'))
 
       render(<TestLoginComponent />, { wrapper: TestWrapper })
       
@@ -101,8 +105,7 @@ describe('Authentication Integration Tests - Simplified', () => {
 
   describe('Registration Flow', () => {
     it('should handle successful registration', async () => {
-      const { api } = require('@/services/api')
-      api.register.mockResolvedValueOnce({
+      mockApi.register.mockResolvedValueOnce({
         success: true,
         user: { name: 'Test User', email: 'test@example.com' }
       })
@@ -112,12 +115,11 @@ describe('Authentication Integration Tests - Simplified', () => {
       const registerButton = screen.getByText('Register')
       await userEvent.click(registerButton)
       
-      expect(api.register).toHaveBeenCalledWith('Test User', 'test@example.com', 'password123')
+      expect(mockApi.register).toHaveBeenCalledWith('Test User', 'test@example.com', 'password123')
     })
 
     it('should handle registration error', async () => {
-      const { api, ApiError } = require('@/services/api')
-      api.register.mockRejectedValueOnce(new ApiError(409, 'Email already exists'))
+      mockApi.register.mockRejectedValueOnce(new ApiError(409, 'Email already exists'))
 
       render(<TestRegisterComponent />, { wrapper: TestWrapper })
       
@@ -131,8 +133,7 @@ describe('Authentication Integration Tests - Simplified', () => {
 
   describe('Loading States', () => {
     it('should show loading state during login', async () => {
-      const { api } = require('@/services/api')
-      api.login.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockApi.login.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
 
       render(<TestLoginComponent />, { wrapper: TestWrapper })
       
@@ -143,8 +144,7 @@ describe('Authentication Integration Tests - Simplified', () => {
     })
 
     it('should show loading state during registration', async () => {
-      const { api } = require('@/services/api')
-      api.register.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockApi.register.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
 
       render(<TestRegisterComponent />, { wrapper: TestWrapper })
       

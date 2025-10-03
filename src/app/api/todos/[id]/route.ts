@@ -3,14 +3,15 @@ import { Todo } from '@/types'
 
 // In-memory storage for demo purposes
 // In a real app, this would be a database
-let todos: Todo[] = []
+const todos: Todo[] = []
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const todoId = parseInt(params.id)
+    const { id } = await params
+    const todoId = parseInt(id)
     const body = await request.json()
     const { text, description, completed, userEmail } = body
 
@@ -46,10 +47,11 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const todoId = parseInt(params.id)
+    const { id } = await params
+    const todoId = parseInt(id)
     const { searchParams } = new URL(request.url)
     const userEmail = searchParams.get('userEmail')
 
