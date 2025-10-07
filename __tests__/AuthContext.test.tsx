@@ -2,37 +2,24 @@ import { renderHook, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ReactNode } from 'react'
 
-// Mock the API service
-jest.mock('@/services/api', () => ({
-  api: {
-    login: jest.fn(),
-    register: jest.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ApiError';
-    }
-  },
-}));
-const { api } = require('@/services/api');
+// Mock Supabase client
+const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockSignOut = jest.fn()
+const mockGetSession = jest.fn()
+const mockOnAuthStateChange = jest.fn()
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
-
-// Mock document.cookie
-Object.defineProperty(document, 'cookie', {
-  writable: true,
-  value: '',
-})
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => ({
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      signUp: mockSignUp,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  }),
+}))
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
@@ -41,12 +28,12 @@ const wrapper = ({ children }: { children: ReactNode }) => (
 describe('AuthContext', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    localStorageMock.getItem.mockImplementation((key) => {
-      if (key === 'users') return '[]'
-      if (key === 'user') return null
-      return null
+    
+    // Setup default Supabase mocks
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } }
     })
-    document.cookie = ''
   })
 
   describe('useAuth hook', () => {
@@ -61,9 +48,14 @@ describe('AuthContext', () => {
       consoleSpy.mockRestore()
     })
 
-    it('returns initial state when no user is stored', () => {
+    it('returns initial state when no user is stored', async () => {
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
+      // Wait for the session check to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
       expect(typeof result.current.login).toBe('function')
@@ -71,12 +63,33 @@ describe('AuthContext', () => {
       expect(typeof result.current.logout).toBe('function')
     })
 
-    it('loads user from localStorage on mount', () => {
+    it('loads user from Supabase session on mount', async () => {
       const mockUser = { email: 'test@example.com', name: 'Test User' }
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUser))
-      
+
+      // Get the mocked functions from jest.setup.js
+      const { createClient } = require('@/lib/supabase')
+      const mockClient = createClient()
+
+      // Mock Supabase session with user data
+      mockClient.auth.getSession.mockResolvedValue({
+        data: {
+          session: {
+            user: {
+              email: 'test@example.com',
+              user_metadata: { name: 'Test User' },
+            }
+          }
+        },
+        error: null
+      })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
+      // Wait for the session check to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
       expect(result.current.user).toEqual(mockUser)
       expect(result.current.isAuthenticated).toBe(true)
     })
@@ -84,7 +97,10 @@ describe('AuthContext', () => {
 
   describe('login function', () => {
     it('returns false for invalid credentials', async () => {
-      api.login.mockResolvedValue({ success: false })
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Invalid login credentials' }
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -99,8 +115,16 @@ describe('AuthContext', () => {
     })
 
     it('returns true and sets user for valid credentials', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -112,29 +136,14 @@ describe('AuthContext', () => {
 
       expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user',
-        JSON.stringify({ email: 'test@example.com', name: 'Test User' })
-      )
     })
 
-    it('sets cookie on successful login', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
-
-      const { result } = renderHook(() => useAuth(), { wrapper })
-
-      await act(async () => {
-        await result.current.login('test@example.com', 'password123')
-      })
-
-      expect(document.cookie).toContain('user=')
-      expect(document.cookie).toContain('path=/')
-      expect(document.cookie).toContain('max-age=86400')
-    })
 
     it('handles failed login', async () => {
-      api.login.mockResolvedValue({ success: false })
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Login failed' }
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -151,7 +160,10 @@ describe('AuthContext', () => {
 
   describe('register function', () => {
     it('returns false when email already exists', async () => {
-      api.register.mockResolvedValue({ success: false })
+      mockSignUp.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'User already registered' }
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -166,8 +178,16 @@ describe('AuthContext', () => {
     })
 
     it('returns true and creates new user when email does not exist', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'new@example.com', 
+        user_metadata: { name: 'New User' },
+        id: 'user-456'
+      }
+      
+      mockSignUp.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -179,52 +199,25 @@ describe('AuthContext', () => {
 
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user',
-        JSON.stringify({ email: 'new@example.com', name: 'New User' })
-      )
     })
 
     it('successfully registers a new user', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'new@example.com', 
+        user_metadata: { name: 'New User' },
+        id: 'user-456'
+      }
+      
+      mockSignUp.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
       await act(async () => {
         await result.current.register('new@example.com', 'password123', 'New User')
       })
-
-      expect(result.current.user).toEqual(mockUser)
-      expect(result.current.isAuthenticated).toBe(true)
-    })
-
-    it('sets cookie on successful registration', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
-
-      const { result } = renderHook(() => useAuth(), { wrapper })
-
-      await act(async () => {
-        await result.current.register('new@example.com', 'password123', 'New User')
-      })
-
-      expect(document.cookie).toContain('user=')
-      expect(document.cookie).toContain('path=/')
-      expect(document.cookie).toContain('max-age=86400')
-    })
-
-    it('handles registration success', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
-
-      const { result } = renderHook(() => useAuth(), { wrapper })
-
-      let success: boolean = false
-      await act(async () => {
-        success = await result.current.register('new@example.com', 'password123', 'New User')
-      })
-      expect(success).toBe(true)
 
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
@@ -232,9 +225,17 @@ describe('AuthContext', () => {
   })
 
   describe('logout function', () => {
-    it('clears user state and localStorage', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
+    it('clears user state', async () => {
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -246,30 +247,28 @@ describe('AuthContext', () => {
       expect(result.current.isAuthenticated).toBe(true)
 
       // Then logout
-      act(() => {
-        result.current.logout()
+      await act(async () => {
+        await result.current.logout()
       })
 
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('user')
-    })
-
-    it('clears cookie on logout', () => {
-      const { result } = renderHook(() => useAuth(), { wrapper })
-
-      act(() => {
-        result.current.logout()
-      })
-
-      expect(document.cookie).toContain('user=; path=/; max-age=0')
+      expect(mockSignOut).toHaveBeenCalled()
     })
   })
 
   describe('integration scenarios', () => {
     it('handles complete login-logout cycle', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -284,8 +283,8 @@ describe('AuthContext', () => {
       expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
 
       // Logout
-      act(() => {
-        result.current.logout()
+      await act(async () => {
+        await result.current.logout()
       })
 
       expect(result.current.isAuthenticated).toBe(false)
@@ -293,8 +292,16 @@ describe('AuthContext', () => {
     })
 
     it('handles complete register-logout cycle', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'new@example.com', 
+        user_metadata: { name: 'New User' },
+        id: 'user-456'
+      }
+      
+      mockSignUp.mockResolvedValue({
+        data: { user: mockUser },
+        error: null
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -309,8 +316,8 @@ describe('AuthContext', () => {
       expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
 
       // Logout
-      act(() => {
-        result.current.logout()
+      await act(async () => {
+        await result.current.logout()
       })
 
       expect(result.current.isAuthenticated).toBe(false)

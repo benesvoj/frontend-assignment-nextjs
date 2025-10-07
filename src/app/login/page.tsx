@@ -18,11 +18,6 @@ export default function LoginPage() {
   const router = useRouter();
   const t = translations;
 
-
-  useEffect(() => {
-    logout();
-  }, [logout]);
-  
   const toggleVisibility = () => setIsVisible(!isVisible);
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { updateTodoInStorage, deleteTodoFromStorage } from '@/utils/serverUtils'
+import { createServerClient } from '@/lib/supabase-server'
+import { updateTodoInStorage, deleteTodoFromStorage, updateTodoInMemory, deleteTodoFromMemory } from '@/utils/serverUtils'
 
 export async function PUT(
   request: NextRequest,
@@ -15,20 +16,48 @@ export async function PUT(
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    const updatedTodo = updateTodoInStorage(todoId, {
-      text,
-      description,
-      completed
-    }, userEmail)
+    // Check if Supabase is configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_project_url') {
+      const supabase = await createServerClient()
 
-    if (!updatedTodo) {
-      return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      const updatedTodo = await updateTodoInStorage(todoId, {
+        text,
+        description,
+        completed
+      }, user.id)
+
+      if (!updatedTodo) {
+        return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        todo: updatedTodo
+      })
+    } else {
+      // Fallback to in-memory storage
+      const updatedTodo = updateTodoInMemory(todoId, {
+        text,
+        description,
+        completed
+      }, userEmail)
+
+      if (!updatedTodo) {
+        return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        todo: updatedTodo
+      })
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      todo: updatedTodo 
-    })
   } catch (error) {
     console.error('Error updating todo:', error)
     return NextResponse.json({ error: 'Failed to update todo' }, { status: 500 })
@@ -49,16 +78,40 @@ export async function DELETE(
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    const success = deleteTodoFromStorage(todoId, userEmail)
+    // Check if Supabase is configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_project_url') {
+      const supabase = await createServerClient()
 
-    if (!success) {
-      return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      const success = await deleteTodoFromStorage(todoId, user.id)
+
+      if (!success) {
+        return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      })
+    } else {
+      // Fallback to in-memory storage
+      const success = deleteTodoFromMemory(todoId, userEmail)
+
+      if (!success) {
+        return NextResponse.json({ error: 'Todo not found' }, { status: 404 })
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: 'Todo deleted successfully'
+      })
     }
-
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Todo deleted successfully' 
-    })
   } catch (error) {
     console.error('Error deleting todo:', error)
     return NextResponse.json({ error: 'Failed to delete todo' }, { status: 500 })

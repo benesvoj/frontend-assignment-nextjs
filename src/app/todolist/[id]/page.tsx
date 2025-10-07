@@ -34,10 +34,10 @@ export default function TaskFormPage() {
 
   const loadTask = useCallback(async () => {
     if (!user?.email) return;
-    
+
     setLoading(true);
     setError("");
-    
+
     try {
       const response = await api.getTodos(user.email);
       if (response.success) {
@@ -89,13 +89,12 @@ export default function TaskFormPage() {
 
     try {
       if (isCreating) {
-        const response = await api.createTodo({
-          text: taskName.trim(),
-          completed: false,
-          description: description.trim() || undefined,
-          userEmail: user.email,
-        });
-        
+        const response = await api.createTodo(
+          taskName.trim(),
+          description.trim() || undefined,
+          user.email
+        );
+
         if (response.success) {
           router.push(routes.todoList);
         }
@@ -104,7 +103,7 @@ export default function TaskFormPage() {
           text: taskName.trim(),
           description: description.trim() || undefined,
         }, user.email);
-        
+
         if (response.success) {
           router.push(routes.todoList);
         }

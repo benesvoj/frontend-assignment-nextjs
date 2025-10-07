@@ -13,11 +13,33 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js Image component
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...props} alt="logo" />
+  },
 }))
 
 // Mock the logo import
 jest.mock('@/assets', () => '/logo.svg')
+
+// Mock Supabase client
+const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockSignOut = jest.fn()
+const mockGetSession = jest.fn()
+const mockOnAuthStateChange = jest.fn()
+
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => ({
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      signUp: mockSignUp,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  }),
+}))
 
 // Mock the AuthContext
 const mockLogin = jest.fn()
@@ -28,24 +50,21 @@ jest.mock('@/contexts/AuthContext', () => ({
     login: mockLogin,
     logout: mockLogout,
     isAuthenticated: false,
+    loading: false,
+    error: null,
   }),
 }))
-
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
 
 describe('LoginPage', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockLogin.mockResolvedValue(false)
+    
+    // Setup default Supabase mocks
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } }
+    })
   })
 
   it('renders login form with all required elements', () => {
@@ -167,10 +186,6 @@ describe('LoginPage', () => {
     expect(passwordInput.getAttribute('type')).toBe('password')
   })
 
-  it('calls logout on component mount', () => {
-    render(<LoginPage />)
-    expect(mockLogout).toHaveBeenCalled()
-  })
 
   it('has correct form validation attributes', () => {
     render(<LoginPage />)

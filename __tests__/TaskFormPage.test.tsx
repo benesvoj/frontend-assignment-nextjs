@@ -97,12 +97,11 @@ describe('TaskFormPage - Creating New Task', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(mockCreateTodo).toHaveBeenCalledWith({
-        text: 'New Test Task',
-        completed: false,
-        description: 'Test description',
-        userEmail: 'test@example.com',
-      })
+      expect(mockCreateTodo).toHaveBeenCalledWith(
+        'New Test Task',
+        'Test description',
+        'test@example.com'
+      )
     })
 
     await waitFor(() => {
@@ -121,12 +120,11 @@ describe('TaskFormPage - Creating New Task', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(mockCreateTodo).toHaveBeenCalledWith({
-        text: 'Task without description',
-        completed: false,
-        description: undefined,
-        userEmail: 'test@example.com',
-      })
+      expect(mockCreateTodo).toHaveBeenCalledWith(
+        'Task without description',
+        undefined,
+        'test@example.com'
+      )
     })
 
     await waitFor(() => {

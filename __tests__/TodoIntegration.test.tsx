@@ -2,6 +2,7 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TodoListPage from '@/app/todolist/page'
 import TaskFormPage from '@/app/todolist/[id]/page'
+import { Todo } from '@/types'
 
 // Mock the API service
 const mockGetTodos = jest.fn()
@@ -11,10 +12,10 @@ const mockDeleteTodo = jest.fn()
 
 jest.mock('@/services/api', () => ({
   api: {
-    getTodos: (...args: any[]) => mockGetTodos(...args),
-    createTodo: (...args: any[]) => mockCreateTodo(...args),
-    updateTodo: (...args: any[]) => mockUpdateTodo(...args),
-    deleteTodo: (...args: any[]) => mockDeleteTodo(...args),
+    getTodos: (...args: Todo[]) => mockGetTodos(...args),
+    createTodo: (...args: Todo[]) => mockCreateTodo(...args),
+    updateTodo: (...args: Todo[]) => mockUpdateTodo(...args),
+    deleteTodo: (...args: Todo[]) => mockDeleteTodo(...args),
   },
   ApiError: class ApiError extends Error {
     constructor(public status: number, message: string) {
@@ -38,7 +39,10 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js Image component
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...props} alt="logo" />
+  },
 }))
 
 // Mock the logo import
@@ -112,12 +116,11 @@ describe('Todo Integration Tests', () => {
 
       // Should call API to create todo
       await waitFor(() => {
-        expect(mockCreateTodo).toHaveBeenCalledWith({
-          text: 'Integration Test Todo',
-          description: 'This is a test description',
-          completed: false,
-          userEmail: 'test@example.com'
-        })
+        expect(mockCreateTodo).toHaveBeenCalledWith(
+          'Integration Test Todo',
+          'This is a test description',
+          'test@example.com'
+        )
       })
 
       // Should navigate back to todo list
@@ -169,12 +172,11 @@ describe('Todo Integration Tests', () => {
 
       // Should save successfully without description
       await waitFor(() => {
-        expect(mockCreateTodo).toHaveBeenCalledWith({
-          text: 'Todo without description',
-          completed: false,
-          userEmail: 'test@example.com',
-          description: undefined
-        })
+        expect(mockCreateTodo).toHaveBeenCalledWith(
+          'Todo without description',
+          undefined,
+          'test@example.com'
+        )
       })
 
       await waitFor(() => {

@@ -11,28 +11,28 @@ jest.mock('next/navigation', () => ({
   }),
 }))
 
-// Mock the API service
-jest.mock('@/services/api', () => ({
-  api: {
-    login: jest.fn(),
-    register: jest.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    constructor(public status: number, message: string) {
-      super(message)
-      this.name = 'ApiError'
-    }
-  }
-}))
+// Mock Supabase client
+const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockSignOut = jest.fn()
+const mockGetSession = jest.fn()
+const mockOnAuthStateChange = jest.fn()
 
-import { api, ApiError } from '@/services/api'
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => ({
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      signUp: mockSignUp,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  }),
+}))
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
 )
-
-// Cast api to jest mock for type safety
-const mockApi = api as jest.Mocked<typeof api>
 
 // Simple test component that uses AuthContext
 function TestLoginComponent() {
@@ -73,27 +73,51 @@ function TestRegisterComponent() {
 describe('Authentication Integration Tests - Simplified', () => {
   beforeEach(() => {
     jest.clearAllMocks()
+    
+    // Setup default Supabase mocks
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } }
+    })
   })
 
   describe('Login Flow', () => {
     it('should handle successful login', async () => {
-      mockApi.login.mockResolvedValueOnce({
-        success: true,
-        user: { name: 'Test User', email: 'test@example.com' }
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
       })
 
       render(<TestLoginComponent />, { wrapper: TestWrapper })
       
+      // Wait for loading to complete
+      await screen.findByText('Login')
+      
       const loginButton = screen.getByText('Login')
       await userEvent.click(loginButton)
       
-      expect(mockApi.login).toHaveBeenCalledWith('test@example.com', 'password123')
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      })
     })
 
     it('should handle login error', async () => {
-      mockApi.login.mockRejectedValueOnce(new ApiError(401, 'Invalid credentials'))
+      mockSignInWithPassword.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Invalid credentials' }
+      })
 
       render(<TestLoginComponent />, { wrapper: TestWrapper })
+      
+      // Wait for loading to complete
+      await screen.findByText('Login')
       
       const loginButton = screen.getByText('Login')
       await userEvent.click(loginButton)
@@ -105,23 +129,46 @@ describe('Authentication Integration Tests - Simplified', () => {
 
   describe('Registration Flow', () => {
     it('should handle successful registration', async () => {
-      mockApi.register.mockResolvedValueOnce({
-        success: true,
-        user: { name: 'Test User', email: 'test@example.com' }
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignUp.mockResolvedValueOnce({
+        data: { user: mockUser },
+        error: null
       })
 
       render(<TestRegisterComponent />, { wrapper: TestWrapper })
       
+      // Wait for loading to complete
+      await screen.findByText('Register')
+      
       const registerButton = screen.getByText('Register')
       await userEvent.click(registerButton)
       
-      expect(mockApi.register).toHaveBeenCalledWith('Test User', 'test@example.com', 'password123')
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+        options: {
+          data: {
+            name: 'Test User',
+          },
+        },
+      })
     })
 
     it('should handle registration error', async () => {
-      mockApi.register.mockRejectedValueOnce(new ApiError(409, 'Email already exists'))
+      mockSignUp.mockResolvedValueOnce({
+        data: { user: null },
+        error: { message: 'Email already exists' }
+      })
 
       render(<TestRegisterComponent />, { wrapper: TestWrapper })
+      
+      // Wait for loading to complete
+      await screen.findByText('Register')
       
       const registerButton = screen.getByText('Register')
       await userEvent.click(registerButton)
@@ -133,9 +180,15 @@ describe('Authentication Integration Tests - Simplified', () => {
 
   describe('Loading States', () => {
     it('should show loading state during login', async () => {
-      mockApi.login.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockSignInWithPassword.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({
+        data: { user: null },
+        error: null
+      }), 100)))
 
       render(<TestLoginComponent />, { wrapper: TestWrapper })
+      
+      // Wait for loading to complete
+      await screen.findByText('Login')
       
       const loginButton = screen.getByText('Login')
       await userEvent.click(loginButton)
@@ -144,9 +197,15 @@ describe('Authentication Integration Tests - Simplified', () => {
     })
 
     it('should show loading state during registration', async () => {
-      mockApi.register.mockImplementation(() => new Promise(resolve => setTimeout(resolve, 100)))
+      mockSignUp.mockImplementation(() => new Promise(resolve => setTimeout(() => resolve({
+        data: { user: null },
+        error: null
+      }), 100)))
 
       render(<TestRegisterComponent />, { wrapper: TestWrapper })
+      
+      // Wait for loading to complete
+      await screen.findByText('Register')
       
       const registerButton = screen.getByText('Register')
       await userEvent.click(registerButton)

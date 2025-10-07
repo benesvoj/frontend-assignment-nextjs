@@ -44,41 +44,57 @@ export const api = {
     return handleResponse(response)
   },
 
-  // Todos
-  async getTodos(userEmail: string): Promise<{ success: boolean; todos: Todo[] }> {
-    const response = await fetch(`${API_BASE_URL}/todos?userEmail=${encodeURIComponent(userEmail)}`)
+  // Todos (all use session cookies for authentication)
+  async getTodos(userEmail?: string): Promise<{ success: boolean; todos: Todo[] }> {
+    const url = userEmail ? `${API_BASE_URL}/todos?userEmail=${userEmail}` : `${API_BASE_URL}/todos`
+    const response = await fetch(url, {
+      credentials: 'include', // Include cookies for session
+    })
     return handleResponse(response)
   },
 
-  async createTodo(todo: Omit<Todo, 'id' | 'createdAt' | 'updatedAt'>): Promise<{ success: boolean; todo: Todo }> {
+  async createTodo(text: string, description?: string, userEmail?: string): Promise<{ success: boolean; todo: Todo }> {
     const response = await fetch(`${API_BASE_URL}/todos`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify(todo),
+      credentials: 'include', // Include cookies for session
+      body: JSON.stringify({ text, description, userEmail }),
     })
-    
+
     return handleResponse(response)
   },
 
-  async updateTodo(id: number, todo: Partial<Todo>, userEmail: string): Promise<{ success: boolean; todo: Todo }> {
+  async updateTodo(id: number, updates: Partial<Pick<Todo, 'text' | 'description' | 'completed'>>, userEmail?: string): Promise<{ success: boolean; todo: Todo }> {
     const response = await fetch(`${API_BASE_URL}/todos/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ ...todo, userEmail }),
+      credentials: 'include', // Include cookies for session
+      body: JSON.stringify({ ...updates, userEmail }),
     })
-    
+
     return handleResponse(response)
   },
 
-  async deleteTodo(id: number, userEmail: string): Promise<{ success: boolean; message: string }> {
-    const response = await fetch(`${API_BASE_URL}/todos/${id}?userEmail=${encodeURIComponent(userEmail)}`, {
+  async deleteTodo(id: number, userEmail?: string): Promise<{ success: boolean; message: string }> {
+    const url = userEmail ? `${API_BASE_URL}/todos/${id}?userEmail=${userEmail}` : `${API_BASE_URL}/todos/${id}`
+    const response = await fetch(url, {
       method: 'DELETE',
+      credentials: 'include', // Include cookies for session
     })
-    
+
+    return handleResponse(response)
+  },
+
+  async logout(): Promise<{ success: boolean; message: string }> {
+    const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    })
+
     return handleResponse(response)
   },
 }
