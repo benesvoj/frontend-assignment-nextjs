@@ -4,6 +4,9 @@ import TodoListPage from '@/app/todolist/page'
 import TaskFormPage from '@/app/todolist/[id]/page'
 import { Todo } from '@/types'
 
+// Type for update parameters
+type TodoUpdates = Partial<Pick<Todo, 'text' | 'description' | 'completed'>>
+
 // Mock the API service
 const mockGetTodos = jest.fn()
 const mockCreateTodo = jest.fn()
@@ -12,10 +15,13 @@ const mockDeleteTodo = jest.fn()
 
 jest.mock('@/services/api', () => ({
   api: {
-    getTodos: (...args: Todo[]) => mockGetTodos(...args),
-    createTodo: (...args: Todo[]) => mockCreateTodo(...args),
-    updateTodo: (...args: Todo[]) => mockUpdateTodo(...args),
-    deleteTodo: (...args: Todo[]) => mockDeleteTodo(...args),
+    getTodos: (userEmail?: string) => mockGetTodos(userEmail),
+    createTodo: (text: string, description?: string, userEmail?: string) => 
+      mockCreateTodo(text, description, userEmail),
+    updateTodo: (id: number, updates: TodoUpdates, userEmail?: string) => 
+      mockUpdateTodo(id, updates, userEmail),
+    deleteTodo: (id: number, userEmail?: string) => 
+      mockDeleteTodo(id, userEmail),
   },
   ApiError: class ApiError extends Error {
     constructor(public status: number, message: string) {
