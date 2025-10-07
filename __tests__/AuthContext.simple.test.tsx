@@ -2,49 +2,38 @@ import { renderHook, act } from '@testing-library/react'
 import { AuthProvider, useAuth } from '@/contexts/AuthContext'
 import { ReactNode } from 'react'
 
-// Mock the API service
-jest.mock('@/services/api', () => ({
-  api: {
-    login: jest.fn(),
-    register: jest.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ApiError';
-    }
-  },
-}));
+// Mock Supabase client
+const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockSignOut = jest.fn()
+const mockGetSession = jest.fn()
+const mockOnAuthStateChange = jest.fn()
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
-
-// Mock document.cookie
-Object.defineProperty(document, 'cookie', {
-  writable: true,
-  value: '',
-})
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => ({
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      signUp: mockSignUp,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  }),
+}))
 
 const wrapper = ({ children }: { children: ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
 )
 
-// Get the mocked API
-const { api } = require('@/services/api');
-
 describe('AuthContext - Simple Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    localStorageMock.getItem.mockReturnValue(null)
-    document.cookie = ''
+    
+    // Setup default Supabase mocks
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } }
+    })
   })
 
   describe('useAuth hook', () => {
@@ -59,9 +48,14 @@ describe('AuthContext - Simple Tests', () => {
       consoleSpy.mockRestore()
     })
 
-    it('returns initial state when no user is stored', () => {
+    it('returns initial state when no user is stored', async () => {
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
+      // Wait for the session check to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
       expect(typeof result.current.login).toBe('function')
@@ -69,12 +63,29 @@ describe('AuthContext - Simple Tests', () => {
       expect(typeof result.current.logout).toBe('function')
     })
 
-    it('loads user from localStorage on mount', () => {
+    it('loads user from Supabase session on mount', async () => {
       const mockUser = { email: 'test@example.com', name: 'Test User' }
-      localStorageMock.getItem.mockReturnValue(JSON.stringify(mockUser))
-      
+
+      // Mock Supabase session with user data
+      mockGetSession.mockResolvedValue({
+        data: {
+          session: {
+            user: {
+              email: 'test@example.com',
+              user_metadata: { name: 'Test User' },
+            }
+          }
+        },
+        error: null
+      })
+
       const { result } = renderHook(() => useAuth(), { wrapper })
-      
+
+      // Wait for the session check to complete
+      await act(async () => {
+        await new Promise(resolve => setTimeout(resolve, 0))
+      })
+
       expect(result.current.user).toEqual(mockUser)
       expect(result.current.isAuthenticated).toBe(true)
     })
@@ -82,7 +93,10 @@ describe('AuthContext - Simple Tests', () => {
 
   describe('login function', () => {
     it('returns false for invalid credentials', async () => {
-      api.login.mockResolvedValue({ success: false })
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Invalid credentials' },
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -98,8 +112,16 @@ describe('AuthContext - Simple Tests', () => {
     })
 
     it('returns true and sets user for valid credentials', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.login.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -109,18 +131,21 @@ describe('AuthContext - Simple Tests', () => {
       })
 
       expect(success).toBe(true)
-      expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
+      expect(result.current.user).toEqual({ email: 'test@example.com', id: 'user-123', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user',
-        JSON.stringify({ email: 'test@example.com', name: 'Test User' })
-      )
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: 'test@example.com',
+        password: 'password123',
+      })
     })
   })
 
   describe('register function', () => {
     it('returns false when email already exists', async () => {
-      api.register.mockResolvedValue({ success: false })
+      mockSignUp.mockResolvedValue({
+        data: { user: null },
+        error: { message: 'Email already exists' },
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -136,8 +161,16 @@ describe('AuthContext - Simple Tests', () => {
     })
 
     it('returns true and creates new user when email does not exist', async () => {
-      const mockUser = { email: 'new@example.com', name: 'New User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'new@example.com', 
+        user_metadata: { name: 'New User' },
+        id: 'user-456'
+      }
+      
+      mockSignUp.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -147,19 +180,32 @@ describe('AuthContext - Simple Tests', () => {
       })
 
       expect(success).toBe(true)
-      expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
+      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user',
-        JSON.stringify({ email: 'new@example.com', name: 'New User' })
-      )
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: 'new@example.com',
+        password: 'password123',
+        options: {
+          data: {
+            name: 'New User',
+          },
+        },
+      })
     })
   })
 
   describe('logout function', () => {
-    it('clears user state and localStorage', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-      api.register.mockResolvedValue({ success: true, user: mockUser })
+    it('clears user state and calls Supabase signOut', async () => {
+      const mockUser = { 
+        email: 'test@example.com', 
+        user_metadata: { name: 'Test User' },
+        id: 'user-123'
+      }
+      
+      mockSignUp.mockResolvedValue({
+        data: { user: mockUser },
+        error: null,
+      })
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
@@ -171,13 +217,13 @@ describe('AuthContext - Simple Tests', () => {
       expect(result.current.isAuthenticated).toBe(true)
 
       // Then logout
-      act(() => {
-        result.current.logout()
+      await act(async () => {
+        await result.current.logout()
       })
 
       expect(result.current.user).toBeNull()
       expect(result.current.isAuthenticated).toBe(false)
-      expect(localStorageMock.removeItem).toHaveBeenCalledWith('user')
+      expect(mockSignOut).toHaveBeenCalled()
     })
   })
 })

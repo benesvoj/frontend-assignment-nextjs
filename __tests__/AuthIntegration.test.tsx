@@ -5,24 +5,24 @@ import LoginPage from '@/app/login/page'
 import RegisterPage from '@/app/register/page'
 import { AuthProvider } from '@/contexts/AuthContext'
 
-// Mock the API service
-jest.mock('@/services/api', () => ({
-  api: {
-    login: jest.fn(),
-    register: jest.fn(),
-  },
-  ApiError: class ApiError extends Error {
-    constructor(message: string) {
-      super(message);
-      this.name = 'ApiError';
-    }
-  },
-}));
+// Mock Supabase client
+const mockSignInWithPassword = jest.fn()
+const mockSignUp = jest.fn()
+const mockSignOut = jest.fn()
+const mockGetSession = jest.fn()
+const mockOnAuthStateChange = jest.fn()
 
-import { api } from '@/services/api';
-
-// Cast api to jest mock for type safety
-const mockApi = api as jest.Mocked<typeof api>
+jest.mock('@/lib/supabase', () => ({
+  createClient: () => ({
+    auth: {
+      signInWithPassword: mockSignInWithPassword,
+      signUp: mockSignUp,
+      signOut: mockSignOut,
+      getSession: mockGetSession,
+      onAuthStateChange: mockOnAuthStateChange,
+    },
+  }),
+}))
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -35,28 +35,15 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js Image component
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...props} alt="logo" />
+  },
 }))
 
 // Mock the logo import
 jest.mock('@/assets', () => '/logo.svg')
 
-// Mock localStorage
-const localStorageMock = {
-  getItem: jest.fn(),
-  setItem: jest.fn(),
-  removeItem: jest.fn(),
-  clear: jest.fn(),
-}
-Object.defineProperty(window, 'localStorage', {
-  value: localStorageMock,
-})
-
-// Mock document.cookie
-Object.defineProperty(document, 'cookie', {
-  writable: true,
-  value: '',
-})
 
 const TestWrapper = ({ children }: { children: React.ReactNode }) => (
   <AuthProvider>{children}</AuthProvider>
@@ -65,17 +52,39 @@ const TestWrapper = ({ children }: { children: React.ReactNode }) => (
 describe('Authentication Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
-    localStorageMock.getItem.mockReturnValue(null)
-    document.cookie = ''
+    
+    // Setup default Supabase mocks
+    mockGetSession.mockResolvedValue({ data: { session: null }, error: null })
+    mockOnAuthStateChange.mockReturnValue({
+      data: { subscription: { unsubscribe: jest.fn() } }
+    })
+    
+    // Reset all mocks to default state
+    mockSignInWithPassword.mockClear()
+    mockSignUp.mockClear()
+    mockSignOut.mockClear()
   })
 
   describe('Complete Registration Flow', () => {
     it('allows user to register and automatically logs them in', async () => {
-      const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      mockApi.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'john@example.com', 
+        user_metadata: { name: 'John Doe' },
+        id: 'user-123'
+      }
+      
+      mockSignUp.mockResolvedValue({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument()
+      })
 
       // Fill registration form
       const nameInput = screen.getByLabelText('Name')
@@ -95,21 +104,31 @@ describe('Authentication Integration Tests', () => {
         expect(mockPush).toHaveBeenCalledWith('/todolist')
       })
 
-      // Should store user in localStorage
-      expect(localStorageMock.setItem).toHaveBeenCalledWith(
-        'user',
-        JSON.stringify({ email: 'john@example.com', name: 'John Doe' })
-      )
-
-      // Should set cookie
-      expect(document.cookie).toContain('user=')
+      // Should call Supabase signUp
+      expect(mockSignUp).toHaveBeenCalledWith({
+        email: 'john@example.com',
+        password: 'password123',
+        options: {
+          data: {
+            name: 'John Doe',
+          },
+        },
+      })
     })
 
     it('prevents duplicate email registration', async () => {
-      mockApi.register.mockResolvedValue({ success: false, user: { email: '', name: '' } })
+      mockSignUp.mockResolvedValue({ 
+        data: { user: null }, 
+        error: { message: 'User already registered' } 
+      })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument()
+      })
 
       const nameInput = screen.getByLabelText('Name')
       const emailInput = screen.getByLabelText('Email')
@@ -133,11 +152,24 @@ describe('Authentication Integration Tests', () => {
 
   describe('Complete Login Flow', () => {
     it('allows registered user to login', async () => {
-      const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      mockApi.login.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'john@example.com', 
+        user_metadata: { name: 'John Doe' },
+        id: 'user-123'
+      }
+      
+      mockSignInWithPassword.mockResolvedValue({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
+      })
 
       const loginEmailInput = screen.getByLabelText('Email')
       const loginPasswordInput = screen.getByLabelText('Password')
@@ -151,13 +183,27 @@ describe('Authentication Integration Tests', () => {
       await waitFor(() => {
         expect(mockPush).toHaveBeenCalledWith('/todolist')
       })
+
+      // Should call Supabase signInWithPassword
+      expect(mockSignInWithPassword).toHaveBeenCalledWith({
+        email: 'john@example.com',
+        password: 'password123',
+      })
     })
 
     it('rejects login with wrong password', async () => {
-      mockApi.login.mockResolvedValue({ success: false, user: { email: '', name: '' } })
+      mockSignInWithPassword.mockResolvedValue({ 
+        data: { user: null }, 
+        error: { message: 'Invalid email or password' } 
+      })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
+      })
 
       const loginEmailInput = screen.getByLabelText('Email')
       const loginPasswordInput = screen.getByLabelText('Password')
@@ -175,10 +221,18 @@ describe('Authentication Integration Tests', () => {
     })
 
     it('rejects login with non-existent email', async () => {
-      mockApi.login.mockResolvedValue({ success: false, user: { email: '', name: '' } })
+      mockSignInWithPassword.mockResolvedValue({ 
+        data: { user: null }, 
+        error: { message: 'Invalid email or password' } 
+      })
 
       const user = userEvent.setup()
       render(<LoginPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Login' })).toBeInTheDocument()
+      })
 
       const loginEmailInput = screen.getByLabelText('Email')
       const loginPasswordInput = screen.getByLabelText('Password')
@@ -201,6 +255,11 @@ describe('Authentication Integration Tests', () => {
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
 
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument()
+      })
+
       const nameInput = screen.getByLabelText('Name')
       const emailInput = screen.getByLabelText('Email')
       const passwordInput = screen.getByLabelText('Password')
@@ -222,6 +281,11 @@ describe('Authentication Integration Tests', () => {
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
 
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument()
+      })
+
       const nameInput = screen.getByLabelText('Name')
       const emailInput = screen.getByLabelText('Email')
       const passwordInput = screen.getByLabelText('Password')
@@ -241,26 +305,49 @@ describe('Authentication Integration Tests', () => {
   })
 
   describe('Navigation Integration', () => {
-    it('navigates between login and register pages', () => {
+    it('navigates between login and register pages', async () => {
       render(<LoginPage />, { wrapper: TestWrapper })
       
-      const registerLink = screen.getByRole('link', { name: 'Register' })
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByTestId('register-link')).toBeInTheDocument()
+      })
+      
+      const registerLink = screen.getByTestId('register-link')
       expect(registerLink.getAttribute('href')).toBe('/register')
       
       render(<RegisterPage />, { wrapper: TestWrapper })
       
-      const loginLink = screen.getByRole('link', { name: 'Login' })
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByTestId('login-link')).toBeInTheDocument()
+      })
+      
+      const loginLink = screen.getByTestId('login-link')
       expect(loginLink.getAttribute('href')).toBe('/login')
     })
   })
 
   describe('Error Handling Integration', () => {
     it('clears errors when form is resubmitted with valid data', async () => {
-      const mockUser = { email: 'john@example.com', name: 'John Doe' }
-      mockApi.register.mockResolvedValue({ success: true, user: mockUser })
+      const mockUser = { 
+        email: 'john@example.com', 
+        user_metadata: { name: 'John Doe' },
+        id: 'user-123'
+      }
+      
+      mockSignUp.mockResolvedValue({ 
+        data: { user: mockUser }, 
+        error: null 
+      })
 
       const user = userEvent.setup()
       render(<RegisterPage />, { wrapper: TestWrapper })
+
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: 'Register' })).toBeInTheDocument()
+      })
 
       const nameInput = screen.getByLabelText('Name')
       const emailInput = screen.getByLabelText('Email')
@@ -284,9 +371,10 @@ describe('Authentication Integration Tests', () => {
       await user.type(confirmPasswordInput, 'password123')
       await user.click(submitButton)
 
-      // Error should be cleared
+      // Error should be cleared and navigation should occur
       await waitFor(() => {
         expect(screen.queryByText('Passwords do not match')).not.toBeTruthy()
+        expect(mockPush).toHaveBeenCalledWith('/todolist')
       })
     })
   })

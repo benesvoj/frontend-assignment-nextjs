@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import {
   Card,
@@ -32,23 +32,12 @@ export default function TaskFormPage() {
   const isEditing = taskId !== "new";
   const isCreating = taskId === "new";
 
-  useEffect(() => {
-    if (!isAuthenticated) {
-      router.push(routes.login);
-      return;
-    }
-
-    if (isEditing) {
-      loadTask();
-    }
-  }, [isAuthenticated, user, router, taskId, isEditing]);
-
-  const loadTask = async () => {
+  const loadTask = useCallback(async () => {
     if (!user?.email) return;
-    
+
     setLoading(true);
     setError("");
-    
+
     try {
       const response = await api.getTodos(user.email);
       if (response.success) {
@@ -69,7 +58,18 @@ export default function TaskFormPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user?.email, taskId, router]);
+
+  useEffect(() => {
+    if (!isAuthenticated) {
+      router.push(routes.login);
+      return;
+    }
+
+    if (isEditing) {
+      loadTask();
+    }
+  }, [isAuthenticated, user, router, taskId, isEditing, loadTask]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,13 +89,12 @@ export default function TaskFormPage() {
 
     try {
       if (isCreating) {
-        const response = await api.createTodo({
-          text: taskName.trim(),
-          completed: false,
-          description: description.trim() || undefined,
-          userEmail: user.email,
-        });
-        
+        const response = await api.createTodo(
+          taskName.trim(),
+          description.trim() || undefined,
+          user.email
+        );
+
         if (response.success) {
           router.push(routes.todoList);
         }
@@ -104,7 +103,7 @@ export default function TaskFormPage() {
           text: taskName.trim(),
           description: description.trim() || undefined,
         }, user.email);
-        
+
         if (response.success) {
           router.push(routes.todoList);
         }

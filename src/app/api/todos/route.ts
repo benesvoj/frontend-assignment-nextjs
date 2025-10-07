@@ -1,9 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { Todo } from '@/types'
-
-// In-memory storage for demo purposes
-// In a real app, this would be a database
-let todos: Todo[] = []
+import { createServerClient } from '@/lib/supabase-server'
+import { getTodosByUserId, addTodo, getTodosByEmail, addTodoInMemory } from '@/utils/serverUtils'
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,13 +11,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'User email is required' }, { status: 400 })
     }
 
-    // Filter todos by user email
-    const userTodos = todos.filter(todo => todo.userEmail === userEmail)
-    
-    return NextResponse.json({ 
-      success: true, 
-      todos: userTodos 
-    })
+    // Check if Supabase is configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const supabase = await createServerClient()
+
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      // Get todos for the authenticated user
+      const userTodos = await getTodosByUserId(user.id)
+
+      return NextResponse.json({
+        success: true,
+        todos: userTodos
+      })
+    } else {
+      // Fallback to in-memory storage
+      const userTodos = getTodosByEmail(userEmail)
+      return NextResponse.json({ 
+        success: true, 
+        todos: userTodos 
+      })
+    }
   } catch (error) {
     console.error('Error fetching todos:', error)
     return NextResponse.json({ error: 'Failed to fetch todos' }, { status: 500 })
@@ -36,22 +52,32 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Text and userEmail are required' }, { status: 400 })
     }
 
-    const newTodo: Todo = {
-      id: Date.now(), // Simple ID generation
-      text,
-      description: description || undefined,
-      completed: false,
-      userEmail,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
+    // Check if Supabase is configured
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      const supabase = await createServerClient()
+
+      // Get authenticated user
+      const { data: { user }, error: authError } = await supabase.auth.getUser()
+
+      if (authError || !user) {
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+      }
+
+      const newTodo = await addTodo(text, description, user.id)
+
+      return NextResponse.json({
+        success: true,
+        todo: newTodo
+      }, { status: 201 })
+    } else {
+      // Fallback to in-memory storage
+      const newTodo = addTodoInMemory(text, description, userEmail)
+
+      return NextResponse.json({ 
+        success: true, 
+        todo: newTodo 
+      }, { status: 201 })
     }
-
-    todos.push(newTodo)
-
-    return NextResponse.json({ 
-      success: true, 
-      todo: newTodo 
-    }, { status: 201 })
   } catch (error) {
     console.error('Error creating todo:', error)
     return NextResponse.json({ error: 'Failed to create todo' }, { status: 500 })

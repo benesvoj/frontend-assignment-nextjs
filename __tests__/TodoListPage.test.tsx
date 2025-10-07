@@ -2,7 +2,7 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import '@testing-library/jest-dom'
 import TodoListPage from '@/app/todolist/page'
-import { api } from '@/services/api'
+import { api, ApiError } from '@/services/api'
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -15,7 +15,10 @@ jest.mock('next/navigation', () => ({
 // Mock Next.js Image component
 jest.mock('next/image', () => ({
   __esModule: true,
-  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => <img {...props} />,
+  default: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img {...props} />
+  },
 }))
 
 // Mock the logo import
@@ -253,5 +256,153 @@ describe('TodoListPage', () => {
     })
 
     expect(screen.getByText('Completed')).toBeInTheDocument()
+  })
+
+  it('toggles todo when checkbox is clicked', async () => {
+    const mockTodos = [
+      {
+        id: 1,
+        text: 'Test Todo',
+        description: '',
+        completed: false,
+        userEmail: 'test@example.com',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01'
+      }
+    ]
+    ;(api.getTodos as jest.Mock).mockResolvedValue({
+      success: true,
+      todos: mockTodos,
+    })
+    ;(api.updateTodo as jest.Mock).mockResolvedValue({
+      success: true,
+      todo: { ...mockTodos[0], completed: true }
+    })
+
+    const user = userEvent.setup()
+    render(<TodoListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Todo')).toBeInTheDocument()
+    })
+
+    const checkbox = screen.getByRole('checkbox')
+    await user.click(checkbox)
+
+    expect(api.updateTodo).toHaveBeenCalledWith(1, { completed: true }, 'test@example.com')
+  })
+
+  it('deletes todo when delete button is clicked', async () => {
+    const mockTodos = [
+      {
+        id: 1,
+        text: 'Test Todo',
+        description: '',
+        completed: false,
+        userEmail: 'test@example.com',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01'
+      }
+    ]
+    ;(api.getTodos as jest.Mock).mockResolvedValue({
+      success: true,
+      todos: mockTodos,
+    })
+    ;(api.deleteTodo as jest.Mock).mockResolvedValue({
+      success: true
+    })
+
+    const user = userEvent.setup()
+    render(<TodoListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Todo')).toBeInTheDocument()
+    })
+
+    // Click the dropdown trigger button (three dots)
+    const dropdownTrigger = screen.getByRole('button', { name: '' })
+    await user.click(dropdownTrigger)
+
+    // Click the delete option from the dropdown
+    const deleteOption = screen.getByText('Delete')
+    await user.click(deleteOption)
+
+    expect(api.deleteTodo).toHaveBeenCalledWith(1, 'test@example.com')
+  })
+
+  it('handles toggle errors', async () => {
+    const mockTodos = [
+      {
+        id: 1,
+        text: 'Test Todo',
+        description: '',
+        completed: false,
+        userEmail: 'test@example.com',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01'
+      }
+    ]
+    ;(api.getTodos as jest.Mock).mockResolvedValue({
+      success: true,
+      todos: mockTodos,
+    })
+    
+    // Mock the API to reject with a proper ApiError
+    ;(api.updateTodo as jest.Mock).mockRejectedValue(new ApiError(500, 'Update failed'))
+
+    const user = userEvent.setup()
+    render(<TodoListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Todo')).toBeInTheDocument()
+    })
+
+    const checkbox = screen.getByRole('checkbox')
+    await user.click(checkbox)
+
+    // Wait for the error to appear
+    await waitFor(() => {
+      expect(screen.getByText('Update failed')).toBeInTheDocument()
+    }, { timeout: 2000 })
+  })
+
+  it('handles delete errors', async () => {
+    const mockTodos = [
+      {
+        id: 1,
+        text: 'Test Todo',
+        description: '',
+        completed: false,
+        userEmail: 'test@example.com',
+        createdAt: '2024-01-01',
+        updatedAt: '2024-01-01'
+      }
+    ]
+    ;(api.getTodos as jest.Mock).mockResolvedValue({
+      success: true,
+      todos: mockTodos,
+    })
+    
+    // Mock the API to reject with a proper ApiError
+    ;(api.deleteTodo as jest.Mock).mockRejectedValue(new ApiError(500, 'Delete failed'))
+
+    const user = userEvent.setup()
+    render(<TodoListPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Test Todo')).toBeInTheDocument()
+    })
+
+    // Click the dropdown trigger button (three dots)
+    const dropdownTrigger = screen.getByRole('button', { name: '' })
+    await user.click(dropdownTrigger)
+
+    // Click the delete option from the dropdown
+    const deleteOption = screen.getByText('Delete')
+    await user.click(deleteOption)
+
+    await waitFor(() => {
+      expect(screen.getByText('Delete failed')).toBeInTheDocument()
+    })
   })
 })

@@ -14,7 +14,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
-  const { register, loading } = useAuth();
+  const { register } = useAuth();
   const router = useRouter();
   const t = translations;
 
@@ -66,6 +66,7 @@ export default function RegisterPage() {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 isRequired
+                data-testid="name-input"
               />
               <Input
                 label={t.common.email}
@@ -74,6 +75,7 @@ export default function RegisterPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 isRequired
+                data-testid="email-input"
               />
               <Input
                 label={t.common.password}
@@ -82,6 +84,7 @@ export default function RegisterPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 isRequired
+                data-testid="password-input"
               />
               <Input
                 label={t.common.confirmPassword}
@@ -90,16 +93,17 @@ export default function RegisterPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 isRequired
+                data-testid="confirm-password-input"
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
-            <Button type="submit" color="primary" className="w-full">
+            <Button type="submit" color="primary" className="w-full" data-testid="register-button">
               {t.button.register}
             </Button>
           </form>
           <div className="text-center text-sm">
             {t.register.alreadyHaveAnAccount}{" "}
-            <Link href={routes.login} className="text-blue-600">
+            <Link href={routes.login} className="text-blue-600" data-testid="login-link">
               {t.button.login}
             </Link>
           </div>

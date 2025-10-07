@@ -1,14 +1,14 @@
 'use client';
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { User } from '@/types';
-import { api, ApiError } from '@/services/api';
+import {User} from '@/types';
+import { createClient } from '@/lib/supabase';
 
 interface AuthContextType {
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string, name: string) => Promise<boolean>;
-  logout: () => void;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
   error: string | null;
@@ -18,14 +18,42 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    const supabase = createClient();
+
+    // Check active session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session?.user) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        const userData: User = {
+          id: session.user.id,
+          email: session.user.email!,
+          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
+        };
+        setUser(userData);
+      } else {
+        setUser(null);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   const login = async (email: string, password: string): Promise<boolean> => {
@@ -33,21 +61,30 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      const response = await api.login(email, password);
-      if (response.success) {
-        setUser(response.user);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        // Add cookie for middleware
-        document.cookie = `user=${JSON.stringify(response.user)}; path=/; max-age=86400`;
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) {
+        setError(error.message);
+        return false;
+      }
+
+      if (data.user) {
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata.name || data.user.email!.split('@')[0],
+        };
+        setUser(userData);
         return true;
       }
       return false;
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Login failed. Please try again.');
-      }
+      setError('Login failed. Please try again.');
+      console.error('Login failed:', err);
       return false;
     } finally {
       setLoading(false);
@@ -59,33 +96,46 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     
     try {
-      const response = await api.register(name, email, password);
-      if (response.success) {
-        setUser(response.user);
-        localStorage.setItem('user', JSON.stringify(response.user));
-        // Add cookie for middleware
-        document.cookie = `user=${JSON.stringify(response.user)}; path=/; max-age=86400`;
+      const supabase = createClient();
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          data: {
+            name,
+          },
+        },
+      });
+
+      if (error) {
+        setError(error.message);
+        return false;
+      }
+
+      if (data.user) {
+        const userData: User = {
+          id: data.user.id,
+          email: data.user.email!,
+          name: data.user.user_metadata.name || data.user.email!.split('@')[0],
+        };
+        setUser(userData);
         return true;
       }
       return false;
     } catch (err) {
-      if (err instanceof ApiError) {
-        setError(err.message);
-      } else {
-        setError('Registration failed. Please try again.');
-      }
+      setError('Registration failed. Please try again.');
+      console.error('Registration failed:', err);
       return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
     setUser(null);
     setError(null);
-    localStorage.removeItem('user');
-    // Remove cookie
-    document.cookie = 'user=; path=/; max-age=0';
   };
 
   return (
