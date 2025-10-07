@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { createServerClient } from '@/lib/supabase-server';
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Allow public routes
@@ -11,9 +12,15 @@ export function middleware(request: NextRequest) {
 
   // Protect todolist route
   if (pathname.startsWith('/todolist')) {
-    const user = request.cookies.get('user');
+    try {
+      const supabase = await createServerClient();
+      const { data: { user } } = await supabase.auth.getUser();
 
-    if (!user) {
+      if (!user) {
+        return NextResponse.redirect(new URL('/login', request.url));
+      }
+    } catch (error) {
+      console.error('Middleware auth error:', error);
       return NextResponse.redirect(new URL('/login', request.url));
     }
   }
