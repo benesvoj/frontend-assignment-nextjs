@@ -131,7 +131,7 @@ describe('AuthContext - Simple Tests', () => {
       })
 
       expect(success).toBe(true)
-      expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
+      expect(result.current.user).toEqual({ email: 'test@example.com', id: 'user-123', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
       expect(mockSignInWithPassword).toHaveBeenCalledWith({
         email: 'test@example.com',
@@ -180,7 +180,7 @@ describe('AuthContext - Simple Tests', () => {
       })
 
       expect(success).toBe(true)
-      expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
+      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'new@example.com',

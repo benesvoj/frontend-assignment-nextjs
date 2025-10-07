@@ -28,6 +28,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data: { session } }) => {
       if (session?.user) {
         const userData: User = {
+          id: session.user.id,
           email: session.user.email!,
           name: session.user.user_metadata.name || session.user.email!.split('@')[0],
         };
@@ -42,6 +43,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       if (session?.user) {
         const userData: User = {
+          id: session.user.id,
           email: session.user.email!,
           name: session.user.user_metadata.name || session.user.email!.split('@')[0],
         };
@@ -72,6 +74,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         const userData: User = {
+          id: data.user.id,
           email: data.user.email!,
           name: data.user.user_metadata.name || data.user.email!.split('@')[0],
         };
@@ -111,6 +114,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       if (data.user) {
         const userData: User = {
+          id: data.user.id,
           email: data.user.email!,
           name: data.user.user_metadata.name || data.user.email!.split('@')[0],
         };

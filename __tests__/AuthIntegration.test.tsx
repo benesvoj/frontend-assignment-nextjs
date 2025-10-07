@@ -305,15 +305,25 @@ describe('Authentication Integration Tests', () => {
   })
 
   describe('Navigation Integration', () => {
-    it('navigates between login and register pages', () => {
+    it('navigates between login and register pages', async () => {
       render(<LoginPage />, { wrapper: TestWrapper })
       
-      const registerLink = screen.getByRole('link', { name: 'Register' })
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByTestId('register-link')).toBeInTheDocument()
+      })
+      
+      const registerLink = screen.getByTestId('register-link')
       expect(registerLink.getAttribute('href')).toBe('/register')
       
       render(<RegisterPage />, { wrapper: TestWrapper })
       
-      const loginLink = screen.getByRole('link', { name: 'Login' })
+      // Wait for loading to complete
+      await waitFor(() => {
+        expect(screen.getByTestId('login-link')).toBeInTheDocument()
+      })
+      
+      const loginLink = screen.getByTestId('login-link')
       expect(loginLink.getAttribute('href')).toBe('/login')
     })
   })

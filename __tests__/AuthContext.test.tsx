@@ -134,7 +134,7 @@ describe('AuthContext', () => {
       })
       expect(success).toBe(true)
 
-      expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
+      expect(result.current.user).toEqual({ email: 'test@example.com', id: 'user-123', name: 'Test User' })
       expect(result.current.isAuthenticated).toBe(true)
     })
 
@@ -197,7 +197,7 @@ describe('AuthContext', () => {
       })
       expect(success).toBe(true)
 
-      expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
+      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
     })
 
@@ -219,7 +219,7 @@ describe('AuthContext', () => {
         await result.current.register('new@example.com', 'password123', 'New User')
       })
 
-      expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
+      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
       expect(result.current.isAuthenticated).toBe(true)
     })
   })
@@ -280,7 +280,7 @@ describe('AuthContext', () => {
       expect(success).toBe(true)
 
       expect(result.current.isAuthenticated).toBe(true)
-      expect(result.current.user).toEqual({ email: 'test@example.com', name: 'Test User' })
+      expect(result.current.user).toEqual({ email: 'test@example.com', id: 'user-123', name: 'Test User' })
 
       // Logout
       await act(async () => {
@@ -313,7 +313,7 @@ describe('AuthContext', () => {
       expect(success).toBe(true)
 
       expect(result.current.isAuthenticated).toBe(true)
-      expect(result.current.user).toEqual({ email: 'new@example.com', name: 'New User' })
+      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
 
       // Logout
       await act(async () => {

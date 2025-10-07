@@ -17,7 +17,7 @@ export async function PUT(
     }
 
     // Check if Supabase is configured
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_project_url') {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const supabase = await createServerClient()
 
       // Get authenticated user
@@ -79,7 +79,7 @@ export async function DELETE(
     }
 
     // Check if Supabase is configured
-    if (process.env.NEXT_PUBLIC_SUPABASE_URL && process.env.NEXT_PUBLIC_SUPABASE_URL !== 'your_supabase_project_url') {
+    if (process.env.NEXT_PUBLIC_SUPABASE_URL) {
       const supabase = await createServerClient()
 
       // Get authenticated user
