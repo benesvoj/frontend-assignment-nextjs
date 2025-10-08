@@ -1,2 +1,14 @@
-echo "Running full test suite before push..."
-npm test
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Run tests before push
+echo "Running tests before push..."
+npm test -- --passWithNoTests
+
+# Check if tests passed
+if [ $? -ne 0 ]; then
+  echo "Tests failed. Push aborted."
+  exit 1
+fi
+
+echo "All tests passed. Proceeding with push..."

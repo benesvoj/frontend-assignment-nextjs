@@ -15,14 +15,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/16/solid";
 import { routes } from "@/routes/routes";
 import { translations } from "@/utils";
-import { TopBar } from "@/app/components/TopBar";
+import { TopBar } from "@/components/layout/TopBar";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const { login, loading, isAuthenticated } = useAuth();
+  const { login, loading, isAuthenticated, error: authError } = useAuth();
   const router = useRouter();
   const t = translations;
 
@@ -110,7 +110,11 @@ export default function LoginPage() {
                     </button>
                   }
                 />
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {(error || authError) && (
+                  <p className="text-sm text-red-500">
+                    {error || authError}
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"

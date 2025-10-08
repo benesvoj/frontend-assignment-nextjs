@@ -12,10 +12,11 @@ import {
   Spinner,
 } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
-import { ArrowLeftIcon, CheckIcon } from "@heroicons/react/16/solid";
+import { ArrowLeftIcon, CheckCircleIcon } from "@heroicons/react/16/solid";
 import { translations } from "@/utils";
 import { routes } from "@/routes/routes";
-import { api, ApiError } from "@/services/api";
+import { api, ApiError } from "@/features/todos/api/api";
+import { useCreateTodo, useUpdateTodo } from "@/features/todos/hooks";
 
 export default function TaskFormPage() {
   const [taskName, setTaskName] = useState("");
@@ -27,6 +28,10 @@ export default function TaskFormPage() {
   const router = useRouter();
   const params = useParams();
   const t = translations;
+
+  const createMutation = useCreateTodo();
+  const updateMutation = useUpdateTodo();
+  const mutationError = createMutation.error || updateMutation.error;
 
   const taskId = params.id as string;
   const isEditing = taskId !== "new";
@@ -89,24 +94,20 @@ export default function TaskFormPage() {
 
     try {
       if (isCreating) {
-        const response = await api.createTodo(
-          taskName.trim(),
-          description.trim() || undefined,
-          user.email
-        );
-
-        if (response.success) {
-          router.push(routes.todoList);
-        }
-      } else {
-        const response = await api.updateTodo(parseInt(taskId), {
+        await createMutation.mutateAsync({
           text: taskName.trim(),
           description: description.trim() || undefined,
-        }, user.email);
-
-        if (response.success) {
-          router.push(routes.todoList);
-        }
+        });
+        router.push(routes.todoList);
+      } else {
+        await updateMutation.mutateAsync({
+          id: parseInt(taskId),
+          updates: {
+            text: taskName.trim(),
+            description: description.trim() || undefined,
+          },
+        });
+        router.push(routes.todoList);
       }
     } catch (err) {
       if (err instanceof ApiError) {
@@ -147,7 +148,7 @@ export default function TaskFormPage() {
             size="sm"
             onPress={handleDiscard}
             className="min-w-0"
-            isDisabled={saving}
+            isDisabled={saving || createMutation.isPending || updateMutation.isPending}
           >
             <ArrowLeftIcon className="w-5 h-5" />
           </Button>
@@ -173,14 +174,17 @@ export default function TaskFormPage() {
             onChange={(e) => setDescription(e.target.value)}
             className="w-full"
           />
-          {error && <p className="text-sm text-red-500">{error}</p>}
+          {(error || mutationError) && (
+            <p className="text-sm text-red-500">
+              {error || (mutationError instanceof Error ? mutationError.message : 'An error occurred')}
+            </p>
+          )}
           <div className="flex gap-2 justify-between">
             <Button
               type="button"
               size="sm"
               onPress={handleDiscard}
-              className="rounded-4xl"
-              isDisabled={saving}
+              isDisabled={saving || createMutation.isPending || updateMutation.isPending}
             >
               {t.button.discard}
             </Button>
@@ -188,10 +192,9 @@ export default function TaskFormPage() {
               type="submit"
               color="primary"
               size="sm"
-              className="rounded-4xl"
-              endContent={saving ? <Spinner size="sm" /> : <CheckIcon className="w-4 h-4" />}
-              isLoading={saving}
-              isDisabled={saving}
+              endContent={(saving || createMutation.isPending || updateMutation.isPending) ? <Spinner size="sm" /> : <CheckCircleIcon className="w-4 h-4" />}
+              isLoading={saving || createMutation.isPending || updateMutation.isPending}
+              isDisabled={saving || createMutation.isPending || updateMutation.isPending}
             >
               {isCreating ? t.button.create : t.button.save}
             </Button>

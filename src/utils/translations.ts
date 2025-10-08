@@ -57,5 +57,13 @@ export const translations = {
 		placeholderPassword: "Enter your password",
 		errorEmailOrPassword: "Invalid email or password",
 		error: "Please fill in all fields",
-	}
+	},
+	toast: {
+		success: "Success",
+		error: "Error",
+		warning: "Warning",
+		todoCreated: "Todo created successfully",
+		todoUpdated: "Todo updated successfully",
+		todoDeleted: "Todo deleted successfully",
+	  },
 } as const;

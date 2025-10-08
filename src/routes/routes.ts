@@ -3,5 +3,5 @@ export const routes = {
 	register: "/register",
 	todoList: "/todolist",
 	todoListNew: "/todolist/new",
-	todoListId: "/todolist/:id",
-};
+	todoListId: (id: string | number) => `/todolist/${id}`,
+} as const;

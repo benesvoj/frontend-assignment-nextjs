@@ -1,8 +1,10 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {User} from '@/types';
 import { createClient } from '@/lib/supabase';
+import { transformSupabaseUser } from '@/utils/userUtils';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -21,40 +23,57 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const handleAuthChange = useCallback((sessionUser: typeof user | null) => {
+    if (sessionUser) {
+      setUser(sessionUser);
+    } else {
+      setUser(null);
+    }
+  }, []);
+
   useEffect(() => {
     const supabase = createClient();
 
     // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
-        const userData: User = {
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
-        };
-        setUser(userData);
+    supabase.auth.getSession().then(({ data: { session }, error  }: { data: { session: Session | null }, error: Error | null }) => {
+      if (error) {
+        console.error('Session error:', error);
+        // Handle refresh token errors specifically
+        if (error.message.includes('Refresh Token')) {
+          console.log('Refresh token invalid, clearing session');
+          supabase.auth.signOut();
+        }
+        setError(error.message);
+        handleAuthChange(null);
+      } else if (session?.user) {
+        handleAuthChange(transformSupabaseUser(session.user));
+        setError(null);
       } else {
-        setUser(null);
+        handleAuthChange(null);
+        setError(null);
       }
+      setLoading(false);
+    }).catch((err: Error) => {
+      console.error('Failed to get session:', err);
+      setError('Failed to load session');
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
+      if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed');
+      }
+
       if (session?.user) {
-        const userData: User = {
-          id: session.user.id,
-          email: session.user.email!,
-          name: session.user.user_metadata.name || session.user.email!.split('@')[0],
-        };
-        setUser(userData);
+        handleAuthChange(transformSupabaseUser(session.user));
       } else {
-        setUser(null);
+        handleAuthChange(null);
       }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [handleAuthChange]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     setLoading(true);
@@ -73,12 +92,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        const userData: User = {
-          id: data.user.id,
-          email: data.user.email!,
-          name: data.user.user_metadata.name || data.user.email!.split('@')[0],
-        };
-        setUser(userData);
+        setUser(transformSupabaseUser(data.user));
         return true;
       }
       return false;
@@ -113,12 +127,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        const userData: User = {
-          id: data.user.id,
-          email: data.user.email!,
-          name: data.user.user_metadata.name || data.user.email!.split('@')[0],
-        };
-        setUser(userData);
+        setUser(transformSupabaseUser(data.user));
         return true;
       }
       return false;

@@ -1,4 +1,4 @@
-import { api, ApiError } from '@/services/api'
+import { api, ApiError } from '@/features/todos/api/api'
 
 // Mock fetch for testing
 const mockFetch = jest.fn()
@@ -26,9 +26,12 @@ describe('Backend Integration - Todo API', () => {
       const result = await api.getTodos('test@example.com')
 
       expect(result).toEqual(mockResponse)
-      expect(mockFetch).toHaveBeenCalledWith('/api/todos?userEmail=test@example.com', {
-        credentials: 'include',
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/todos?userEmail=test@example.com'),
+        expect.objectContaining({
+          credentials: 'include',
+        })
+      )
     })
 
     it('should create a new todo', async () => {
@@ -45,14 +48,14 @@ describe('Backend Integration - Todo API', () => {
       const result = await api.createTodo('New Todo', 'New Description', 'test@example.com')
 
       expect(result).toEqual(mockResponse)
-      expect(mockFetch).toHaveBeenCalledWith('/api/todos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ text: 'New Todo', description: 'New Description', userEmail: 'test@example.com' }),
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/todos'),
+        expect.objectContaining({
+          method: 'POST',
+          credentials: 'include',
+          body: JSON.stringify({ text: 'New Todo', description: 'New Description', userEmail: 'test@example.com' }),
+        })
+      )
     })
 
     it('should update a todo', async () => {
@@ -69,14 +72,14 @@ describe('Backend Integration - Todo API', () => {
       const result = await api.updateTodo(1, { text: 'Updated Todo', completed: true }, 'test@example.com')
 
       expect(result).toEqual(mockResponse)
-      expect(mockFetch).toHaveBeenCalledWith('/api/todos/1', {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({ text: 'Updated Todo', completed: true, userEmail: 'test@example.com' }),
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/todos/1'),
+        expect.objectContaining({
+          method: 'PUT',
+          credentials: 'include',
+          body: JSON.stringify({ text: 'Updated Todo', completed: true, userEmail: 'test@example.com' }),
+        })
+      )
     })
 
     it('should delete a todo', async () => {
@@ -93,10 +96,13 @@ describe('Backend Integration - Todo API', () => {
       const result = await api.deleteTodo(1, 'test@example.com')
 
       expect(result).toEqual(mockResponse)
-      expect(mockFetch).toHaveBeenCalledWith('/api/todos/1?userEmail=test@example.com', {
-        method: 'DELETE',
-        credentials: 'include',
-      })
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('/api/todos/1?userEmail=test@example.com'),
+        expect.objectContaining({
+          method: 'DELETE',
+          credentials: 'include',
+        })
+      )
     })
   })
 

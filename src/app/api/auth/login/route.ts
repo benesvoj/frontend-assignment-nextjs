@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { findUserByCredentials } from '@/utils/serverUtils'
+import { getUserDisplayName } from '@/utils/userUtils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
         success: true,
         user: {
           email: data.user.email,
-          name: data.user.user_metadata.name,
+          name: getUserDisplayName(data.user.user_metadata, data.user.email!),
           createdAt: data.user.created_at,
         }
       })
@@ -47,7 +48,8 @@ export async function POST(request: NextRequest) {
       }
 
       // Return user without password
-      const { password: _unused, ...userWithoutPassword } = user
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password: _password, ...userWithoutPassword } = user
 
       return NextResponse.json({ 
         success: true, 

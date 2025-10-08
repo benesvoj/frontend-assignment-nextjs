@@ -1,103 +1,43 @@
 "use client";
 
-import {useCallback, useEffect, useState} from "react";
 import {useRouter} from "next/navigation";
 import {Alert, Button, Card, CardBody, CardHeader, Spinner} from "@heroui/react";
 import {useAuth} from "@/contexts/AuthContext";
-import {PlusIcon} from "@heroicons/react/16/solid";
+import {PlusCircleIcon} from "@heroicons/react/16/solid";
 import {translations} from "@/utils";
 import Logo from "@/assets";
 import Image from "next/image";
-import {Todo} from "@/types";
-import {TodoSection} from "@/app/todolist/components/TodoSection";
+import {TodoSection} from "@/features/todos/components/TodoSection";
 import {routes} from "@/routes/routes";
-import {api, ApiError} from "@/services/api";
+import {useTodos} from "@/features/todos/hooks";
+import {useToggleTodo, useDeleteTodo} from "@/features/todos/hooks";
 
 export default function TodoListPage() {
-	const [todos, setTodos] = useState<Todo[]>([]);
-	const [loading, setLoading] = useState(false);
-	const [error, setError] = useState<string | null>(null);
 	const {user, isAuthenticated} = useAuth();
 	const router = useRouter();
 	const t = translations;
 
-	const loadTodos = useCallback(async (clearError = true) => {
-		if (!user?.email) return;
-
-		setLoading(true);
-		if (clearError) {
-			setError(null); // Only clear error when explicitly requested
-		}
-
-		try {
-			const response = await api.getTodos(user.email);
-			if (response.success) {
-				setTodos(response.todos);
-			}
-		} catch (err) {
-			if (err instanceof ApiError) {
-				setError(err.message);
-			} else {
-				setError('Failed to load todos');
-			}
-		} finally {
-			setLoading(false);
-		}
-	}, [user?.email]);
-
-	useEffect(() => {
-		if (!isAuthenticated) {
-			router.push(routes.login);
-			return;
-		}
-
-		loadTodos(false); // Don't clear errors when loading todos on mount
-	}, [isAuthenticated, user, router, loadTodos]);
+	const { data: todos, isLoading: loading, error: queryError } = useTodos();
+	const toggleMutation = useToggleTodo();
+	const deleteMutation = useDeleteTodo();
 
 	const navigateToCreateTask = () => {
 		router.push(routes.todoListNew);
 	};
 
 	const navigateToEditTask = (taskId: number) => {
-		router.push(routes.todoListId.replace(":id", taskId.toString()));
+		router.push(routes.todoListId(taskId));
 	};
 
-	const toggleTodo = async (id: number) => {
-		if (!user?.email) return;
-
-		const todo = todos.find(t => t.id === id);
-		if (!todo) return;
-
-		try {
-			const response = await api.updateTodo(id, {completed: !todo.completed}, user.email);
-			if (response.success) {
-				setTodos(todos.map(t => t.id === id ? response.todo : t));
-			}
-		} catch (err) {
-			if (err instanceof ApiError) {
-				setError(err.message);
-			} else {
-				setError('Failed to update todo');
-			}
-		}
+	const handleToggleTodo = (id: number) => {
+		toggleMutation.mutate(id);
 	};
 
-	const deleteTodo = async (id: number) => {
-		if (!user?.email) return;
-
-		try {
-			const response = await api.deleteTodo(id, user.email);
-			if (response.success) {
-				setTodos(todos.filter(todo => todo.id !== id));
-			}
-		} catch (err) {
-			if (err instanceof ApiError) {
-				setError(err.message);
-			} else {
-				setError('Failed to delete todo');
-			}
-		}
+	const handleDeleteTodo = (id: number) => {
+		deleteMutation.mutate(id);
 	};
+
+	const error = queryError?.message || toggleMutation.error?.message || deleteMutation.error?.message;
 
 	if (!isAuthenticated) {
 		return null;
@@ -131,9 +71,9 @@ export default function TodoListPage() {
 				<Button
 					color="primary"
 					size="sm"
-					className="rounded-4xl w-full md:w-auto"
+					className="w-full md:w-auto"
 					onPress={navigateToCreateTask}
-					endContent={<PlusIcon className="w-4 h-4 md:w-4 md:h-4"/>}
+					endContent={<PlusCircleIcon className="w-4 h-4 md:w-4 md:h-4"/>}
 				>
 					{t.todoList.addButton}
 				</Button>
@@ -144,7 +84,7 @@ export default function TodoListPage() {
 						{error}
 					</Alert>
 				)}
-				{todos.filter((todo) => !todo.completed).length === 0 ? (
+				{(todos || []).filter((todo) => !todo.completed).length === 0 ? (
 					<div className="flex flex-col justify-center items-center py-8 gap-4">
 						<Image src={Logo} alt="Logo" width={80}/>
 						<h1 className="text-3xl font-bold">{t.todoList.emptyTitle}</h1>
@@ -155,19 +95,19 @@ export default function TodoListPage() {
 				) : (
 					<TodoSection
 						title={t.todoList.todoSection}
-						todos={todos.filter((todo) => !todo.completed)}
-						onToggle={toggleTodo}
+						todos={(todos || []).filter((todo) => !todo.completed)}
+						onToggle={handleToggleTodo}
 						onEdit={navigateToEditTask}
-						onDelete={deleteTodo}
+						onDelete={handleDeleteTodo}
 					/>
 				)}
-				{todos.filter((todo) => todo.completed).length > 0 && (
+				{(todos || []).filter((todo) => todo.completed).length > 0 && (
 					<TodoSection
 						title={t.todoList.completedSection}
-						todos={todos.filter((todo) => todo.completed)}
-						onToggle={toggleTodo}
+						todos={(todos || []).filter((todo) => todo.completed)}
+						onToggle={handleToggleTodo}
 						onEdit={navigateToEditTask}
-						onDelete={deleteTodo}
+						onDelete={handleDeleteTodo}
 					/>
 				)}
 			</CardBody>

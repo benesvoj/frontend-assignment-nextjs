@@ -9,7 +9,7 @@ let nextTodoId = 1
 let nextUserId = 1
 
 // Get todos for authenticated user
-export const getTodosByUserId = async (userId: string): Promise<Todo[]> => {
+export const getTodosByUserId = async (userId: string, userEmail: string): Promise<Todo[]> => {
   const supabase = await createServerClient()
 
   const { data, error } = await supabase
@@ -23,11 +23,20 @@ export const getTodosByUserId = async (userId: string): Promise<Todo[]> => {
     throw new Error('Failed to fetch todos')
   }
 
-  return data || []
+  // Transform database todos to match frontend Todo interface
+  return (data || []).map((todo: Todo) => ({
+    id: todo.id,
+    text: todo.text,
+    completed: todo.completed,
+    description: todo.description,
+    userEmail: userEmail,
+    createdAt: todo.createdAt,
+    updatedAt: todo.updatedAt
+  }))
 }
 
 // Add a new todo
-export const addTodo = async (text: string, description: string | undefined, userId: string): Promise<Todo> => {
+export const addTodo = async (text: string, description: string | undefined, userId: string, userEmail: string): Promise<Todo> => {
   const supabase = await createServerClient()
 
   const newTodo = {
@@ -50,19 +59,30 @@ export const addTodo = async (text: string, description: string | undefined, use
     throw new Error('Failed to create todo')
   }
 
-  return data
+  // Transform database todo to match frontend Todo interface
+  return {
+    id: data.id,
+    text: data.text,
+    completed: data.completed,
+    description: data.description,
+    userEmail: userEmail,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  }
 }
 
 // Update a todo
-export const updateTodoInStorage = async (id: number, updates: Partial<Todo>, userId: string): Promise<Todo | null> => {
+export const updateTodoInStorage = async (id: number, updates: Partial<Todo>, userId: string, userEmail: string): Promise<Todo | null> => {
   const supabase = await createServerClient()
+
+  const updateData = {
+    ...updates,
+    updatedAt: new Date().toISOString()
+  };
 
   const { data, error } = await supabase
     .from('todos')
-    .update({
-      ...updates,
-      updatedAt: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', id)
     .eq('user_id', userId)
     .select()
@@ -72,8 +92,17 @@ export const updateTodoInStorage = async (id: number, updates: Partial<Todo>, us
     console.error('Error updating todo:', error)
     return null
   }
-
-  return data
+  
+  // Transform database todo to match frontend Todo interface
+  return {
+    id: data.id,
+    text: data.text,
+    completed: data.completed,
+    description: data.description,
+    userEmail: userEmail,
+    createdAt: data.createdAt,
+    updatedAt: data.updatedAt
+  };
 }
 
 // Delete a todo

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { TopBar } from '@/app/components/TopBar'
+import { TopBar } from '@/components/layout/TopBar'
 
 // Mock Next.js router
 jest.mock('next/navigation', () => ({
