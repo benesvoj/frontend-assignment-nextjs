@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import TaskFormPage from '@/app/todolist/[id]/page'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import React from 'react'
+import { Todo } from '@/types'
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -32,9 +33,9 @@ const mockUpdateTodo = jest.fn()
 
 jest.mock('@/features/todos/api/api', () => ({
   api: {
-    getTodos: (...args: unknown[]) => mockGetTodos(...args),
-    createTodo: (...args: unknown[]) => mockCreateTodo(...args),
-    updateTodo: (...args: unknown[]) => mockUpdateTodo(...args),
+    getTodos: (...args: Todo[]) => mockGetTodos(...args),
+    createTodo: (...args: Todo[]) => mockCreateTodo(...args),
+    updateTodo: (...args: Todo[]) => mockUpdateTodo(...args),
   },
   ApiError: class ApiError extends Error {
     constructor(public status: number, message: string) {
