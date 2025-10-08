@@ -1,5 +1,5 @@
 import React from "react";
-import {TopBar} from "@/app/components/TopBar";
+import {TopBar} from "@/components/layout/TopBar";
 
 export default function TodoListLayout({children}: { children: React.ReactNode }) {
 	return (

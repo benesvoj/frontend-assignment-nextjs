@@ -15,7 +15,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/16/solid";
 import { routes } from "@/routes/routes";
 import { translations } from "@/utils";
-import { TopBar } from "@/app/components/TopBar";
+import { TopBar } from "@/components/layout/TopBar";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");

@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event'
 import TodoListPage from '@/app/todolist/page'
 import TaskFormPage from '@/app/todolist/[id]/page'
 import { Todo } from '@/types'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Type for update parameters
 type TodoUpdates = Partial<Pick<Todo, 'text' | 'description' | 'completed'>>
@@ -13,7 +14,7 @@ const mockCreateTodo = jest.fn()
 const mockUpdateTodo = jest.fn()
 const mockDeleteTodo = jest.fn()
 
-jest.mock('@/services/api', () => ({
+jest.mock('@/features/todos/api/api', () => ({
   api: {
     getTodos: (userEmail?: string) => mockGetTodos(userEmail),
     createTodo: (text: string, description?: string, userEmail?: string) => 
@@ -64,6 +65,28 @@ jest.mock('@/contexts/AuthContext', () => ({
   }),
 }))
 
+// Helper function to render with React Query
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const testQueryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={testQueryClient}>
+      {ui}
+    </QueryClientProvider>
+  )
+}
+
 describe('Todo Integration Tests', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -80,7 +103,7 @@ describe('Todo Integration Tests', () => {
       mockGetTodos.mockResolvedValue({ success: true, todos: [] })
 
       // Start with empty todo list
-      render(<TodoListPage />)
+      renderWithQueryClient(<TodoListPage />)
 
       // Wait for API call to complete and empty state to show
       await waitFor(() => {
@@ -109,7 +132,7 @@ describe('Todo Integration Tests', () => {
         }
       })
 
-      render(<TaskFormPage />)
+      renderWithQueryClient(<TaskFormPage />)
 
       // Fill out the form
       const taskNameInput = screen.getByLabelText('Task name')
@@ -144,7 +167,7 @@ describe('Todo Integration Tests', () => {
     it('does not submit form when task name is empty due to HTML5 validation', async () => {
       const user = userEvent.setup()
 
-      render(<TaskFormPage />)
+      renderWithQueryClient(<TaskFormPage />)
 
       // Try to submit empty form
       const submitButton = screen.getByRole('button', { name: 'Create task' })
@@ -168,7 +191,7 @@ describe('Todo Integration Tests', () => {
         }
       })
 
-      render(<TaskFormPage />)
+      renderWithQueryClient(<TaskFormPage />)
 
       const taskNameInput = screen.getByLabelText('Task name')
       const submitButton = screen.getByRole('button', { name: 'Create task' })
@@ -195,7 +218,7 @@ describe('Todo Integration Tests', () => {
     it('navigates back to todo list when discard button is clicked', async () => {
       const user = userEvent.setup()
 
-      render(<TaskFormPage />)
+      renderWithQueryClient(<TaskFormPage />)
 
       const discardButton = screen.getByRole('button', { name: 'Discard changes' })
       await user.click(discardButton)
@@ -223,7 +246,7 @@ describe('Todo Integration Tests', () => {
 
       mockGetTodos.mockResolvedValue({ success: true, todos: mockTodos })
 
-      render(<TodoListPage />)
+      renderWithQueryClient(<TodoListPage />)
 
       // Should call API to fetch todos
       await waitFor(() => {

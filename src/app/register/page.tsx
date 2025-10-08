@@ -6,7 +6,7 @@ import { Card, CardBody, CardHeader, Input, Button, Link } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { translations } from "@/utils";
 import { routes } from "@/routes/routes";
-import { TopBar } from "@/app/components/TopBar";
+import { TopBar } from "@/components/layout/TopBar";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");

@@ -64,17 +64,18 @@ describe('AuthContext', () => {
     })
 
     it('loads user from Supabase session on mount', async () => {
-      const mockUser = { email: 'test@example.com', name: 'Test User' }
-
-      // Get the mocked functions from jest.setup.js
-      const { createClient } = require('@/lib/supabase')
-      const mockClient = createClient()
+      const mockUser = {
+        id: 'user-123',
+        email: 'test@example.com',
+        name: 'Test User'
+      }
 
       // Mock Supabase session with user data
-      mockClient.auth.getSession.mockResolvedValue({
+      mockGetSession.mockResolvedValue({
         data: {
           session: {
             user: {
+              id: 'user-123',
               email: 'test@example.com',
               user_metadata: { name: 'Test User' },
             }
@@ -87,7 +88,7 @@ describe('AuthContext', () => {
 
       // Wait for the session check to complete
       await act(async () => {
-        await new Promise(resolve => setTimeout(resolve, 0))
+        await new Promise(resolve => setTimeout(resolve, 100))
       })
 
       expect(result.current.user).toEqual(mockUser)

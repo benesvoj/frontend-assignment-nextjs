@@ -28,11 +28,11 @@ const mockGetTodos = jest.fn()
 const mockCreateTodo = jest.fn()
 const mockUpdateTodo = jest.fn()
 
-jest.mock('@/services/api', () => ({
+jest.mock('@/features/todos/api/api', () => ({
   api: {
-    getTodos: (...args: any[]) => mockGetTodos(...args),
-    createTodo: (...args: any[]) => mockCreateTodo(...args),
-    updateTodo: (...args: any[]) => mockUpdateTodo(...args),
+    getTodos: (...args: unknown[]) => mockGetTodos(...args),
+    createTodo: (...args: unknown[]) => mockCreateTodo(...args),
+    updateTodo: (...args: unknown[]) => mockUpdateTodo(...args),
   },
   ApiError: class ApiError extends Error {
     constructor(public status: number, message: string) {
@@ -144,7 +144,7 @@ describe('TaskFormPage - Creating New Task', () => {
 
   it('displays error message when API call fails', async () => {
     const user = userEvent.setup()
-    const ApiError = require('@/services/api').ApiError
+    const { ApiError } = await import('@/features/todos/api/api')
     mockCreateTodo.mockRejectedValue(new ApiError(500, 'Server error'))
 
     render(<TaskFormPage />)
@@ -240,7 +240,7 @@ describe('TaskFormPage - Editing Existing Task', () => {
   })
 
   it('displays error message when loading task fails', async () => {
-    const ApiError = require('@/services/api').ApiError
+    const { ApiError } = await import('@/features/todos/api/api')
     mockGetTodos.mockRejectedValueOnce(new ApiError(500, 'Failed to load task'))
 
     render(<TaskFormPage />)
