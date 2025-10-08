@@ -14,15 +14,17 @@ import Logo from "@/assets";
 import Image from "next/image";
 import { ArrowLeftStartOnRectangleIcon } from "@heroicons/react/16/solid";
 import { routes } from "@/routes/routes";
+import { showToast } from "@/components/ui/Toast";
 
 export const TopBar = () => {
   const { user, logout, isAuthenticated } = useAuth();
   const t = translations;
   const router = useRouter();
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
+    await logout();
     router.push(routes.login);
+    showToast.success(t.toast.logoutSuccess);
   };
 
   const isAuthenticatedStyle = isAuthenticated

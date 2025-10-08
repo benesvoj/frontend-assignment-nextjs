@@ -7,6 +7,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { translations } from "@/utils";
 import { routes } from "@/routes/routes";
 import { TopBar } from "@/components/layout/TopBar";
+import { showToast } from "@/components/ui/Toast";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -39,7 +40,8 @@ export default function RegisterPage() {
 
     const success = await register(email, password, name);
     if (success) {
-      router.push(routes.todoList);
+      showToast.success(t.register.successMessage);
+      router.push(routes.login);
     } else {
       setError(t.register.errorEmailAlreadyExists);
     }

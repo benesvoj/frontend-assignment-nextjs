@@ -152,7 +152,7 @@ describe('RegisterPage', () => {
     expect(mockRegister).toHaveBeenCalledWith('john@example.com', 'password123', 'John Doe')
   })
 
-  it('navigates to todo list on successful registration', async () => {
+  it('navigates to login page on successful registration', async () => {
     const user = userEvent.setup()
     mockRegister.mockResolvedValue(true)
     render(<RegisterPage />)
@@ -170,7 +170,7 @@ describe('RegisterPage', () => {
     await user.click(submitButton)
 
     await waitFor(() => {
-      expect(mockPush).toHaveBeenCalledWith('/todolist')
+      expect(mockPush).toHaveBeenCalledWith('/login')
     })
   })
 

@@ -66,7 +66,7 @@ describe('Authentication Integration Tests', () => {
   })
 
   describe('Complete Registration Flow', () => {
-    it('allows user to register and automatically logs them in', async () => {
+    it('allows user to register and redirects to login page', async () => {
       const mockUser = { 
         email: 'john@example.com', 
         user_metadata: { name: 'John Doe' },
@@ -101,7 +101,7 @@ describe('Authentication Integration Tests', () => {
 
       // Wait for async operations to complete
       await waitFor(() => {
-        expect(mockPush).toHaveBeenCalledWith('/todolist')
+        expect(mockPush).toHaveBeenCalledWith('/login')
       })
 
       // Should call Supabase signUp
@@ -374,7 +374,7 @@ describe('Authentication Integration Tests', () => {
       // Error should be cleared and navigation should occur
       await waitFor(() => {
         expect(screen.queryByText('Passwords do not match')).not.toBeTruthy()
-        expect(mockPush).toHaveBeenCalledWith('/todolist')
+        expect(mockPush).toHaveBeenCalledWith('/login')
       })
     })
   })
