@@ -22,7 +22,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isVisible, setIsVisible] = useState(false);
-  const { login, loading, isAuthenticated } = useAuth();
+  const { login, loading, isAuthenticated, error: authError } = useAuth();
   const router = useRouter();
   const t = translations;
 
@@ -110,7 +110,11 @@ export default function LoginPage() {
                     </button>
                   }
                 />
-                {error && <p className="text-sm text-red-500">{error}</p>}
+                {(error || authError) && (
+                  <p className="text-sm text-red-500">
+                    {error || authError}
+                  </p>
+                )}
               </div>
               <Button
                 type="submit"

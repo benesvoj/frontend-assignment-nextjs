@@ -34,11 +34,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      if (session?.user) {
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error) {
+        console.error('Session error:', error);
+        // Handle refresh token errors specifically
+        if (error.message.includes('Refresh Token')) {
+          console.log('Refresh token invalid, clearing session');
+          supabase.auth.signOut();
+        }
+        setError(error.message);
+        handleAuthChange(null);
+      } else if (session?.user) {
         handleAuthChange(transformSupabaseUser(session.user));
+        setError(null);
       } else {
         handleAuthChange(null);
+        setError(null);
       }
       setLoading(false);
     }).catch((err) => {
