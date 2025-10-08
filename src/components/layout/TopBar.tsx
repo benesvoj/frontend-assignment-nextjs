@@ -23,8 +23,8 @@ export const TopBar = () => {
 
   const handleLogout = async () => {
     await logout();
-    router.push(routes.login);
     showToast.success(t.toast.logoutSuccess);
+    router.push(routes.login);
   };
 
   const isAuthenticatedStyle = isAuthenticated

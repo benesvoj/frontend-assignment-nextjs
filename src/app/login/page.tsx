@@ -48,8 +48,8 @@ export default function LoginPage() {
 
     const success = await login(email, password);
     if (success) {
-      router.push(routes.todoList);
       showToast.success(t.toast.loginSuccess);
+      router.push(routes.todoList);
     } else {
       setError(t.common.errorEmailOrPassword);
     }
