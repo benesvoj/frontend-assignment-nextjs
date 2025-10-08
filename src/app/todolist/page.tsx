@@ -3,7 +3,7 @@
 import {useRouter} from "next/navigation";
 import {Alert, Button, Card, CardBody, CardHeader, Spinner} from "@heroui/react";
 import {useAuth} from "@/contexts/AuthContext";
-import {PlusIcon} from "@heroicons/react/16/solid";
+import {PlusCircleIcon} from "@heroicons/react/16/solid";
 import {translations} from "@/utils";
 import Logo from "@/assets";
 import Image from "next/image";
@@ -71,9 +71,9 @@ export default function TodoListPage() {
 				<Button
 					color="primary"
 					size="sm"
-					className="rounded-4xl w-full md:w-auto"
+					className="w-full md:w-auto"
 					onPress={navigateToCreateTask}
-					endContent={<PlusIcon className="w-4 h-4 md:w-4 md:h-4"/>}
+					endContent={<PlusCircleIcon className="w-4 h-4 md:w-4 md:h-4"/>}
 				>
 					{t.todoList.addButton}
 				</Button>

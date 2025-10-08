@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { api } from '../api/api';
 import { Todo } from '@/types';
+import { showToast } from '@/components/ui/Toast';
+import { translations } from '@/utils';
 
 export const useCreateTodo = () => {
   const queryClient = useQueryClient();
@@ -10,8 +12,14 @@ export const useCreateTodo = () => {
   return useMutation({
     mutationFn: ({ text, description }: { text: string; description?: string }) =>
       api.createTodo(text, description, user?.email),
-    onSuccess: () => {
+    onSuccess: (data) => {
+      queryClient.setQueryData<Todo[]>(['todos', user?.email], (old) => {
+        if (!old) return [data.todo];
+        return [data.todo, ...old];
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['todos', user?.email] });
+      showToast.success(translations.toast.todoCreated);
     },
   });
 };
@@ -25,6 +33,7 @@ export const useUpdateTodo = () => {
       api.updateTodo(id, updates, user?.email),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['todos', user?.email] });
+      showToast.success(translations.toast.todoUpdated);
     },
   });
 };
@@ -35,8 +44,14 @@ export const useDeleteTodo = () => {
 
   return useMutation({
     mutationFn: (id: number) => api.deleteTodo(id, user?.email),
-    onSuccess: () => {
+    onSuccess: (_, id) => {
+      queryClient.setQueryData<Todo[]>(['todos', user?.email], (old) => {
+        if (!old) return [];
+        return old.filter(todo => todo.id !== id);
+      });
+      
       queryClient.invalidateQueries({ queryKey: ['todos', user?.email] });
+      showToast.success(translations.toast.todoDeleted);
     },
   });
 };
@@ -47,7 +62,6 @@ export const useToggleTodo = () => {
 
   return useMutation({
     mutationFn: async (id: number) => {
-      // Get current todos from cache
       const todos = queryClient.getQueryData<Todo[]>(['todos', user?.email]);
       const todo = todos?.find((t) => t.id === id);
 
@@ -55,16 +69,15 @@ export const useToggleTodo = () => {
         throw new Error('Todo not found');
       }
 
-      return api.updateTodo(id, { completed: !todo.completed }, user?.email);
+      const newCompleted = !todo.completed;
+
+      return api.updateTodo(id, { completed: newCompleted }, user?.email);
     },
-    onMutate: async (id) => {
-      // Cancel outgoing refetches
+    onMutate: async (id: number) => {
       await queryClient.cancelQueries({ queryKey: ['todos', user?.email] });
 
-      // Snapshot the previous value
       const previousTodos = queryClient.getQueryData<Todo[]>(['todos', user?.email]);
 
-      // Optimistically update
       queryClient.setQueryData<Todo[]>(['todos', user?.email], (old) =>
         old?.map((todo) =>
           todo.id === id ? { ...todo, completed: !todo.completed } : todo
@@ -73,14 +86,19 @@ export const useToggleTodo = () => {
 
       return { previousTodos };
     },
-    onError: (_err, _id, context) => {
-      // Rollback on error
+    onSuccess: (data, id) => {
+      queryClient.setQueryData<Todo[]>(['todos', user?.email], (prev) =>
+        prev?.map((todo) =>
+          todo.id === id ? data.todo : todo
+        )
+      );
+      showToast.success(translations.toast.todoUpdated);
+    },
+    onError: (err, _id, context) => {
+      console.error('Toggle todo error:', err);
       if (context?.previousTodos) {
         queryClient.setQueryData(['todos', user?.email], context.previousTodos);
       }
-    },
-    onSettled: () => {
-      queryClient.invalidateQueries({ queryKey: ['todos', user?.email] });
     },
   });
 };

@@ -1,6 +1,6 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { TaskItem } from '@/app/todolist/components/TaskItem'
+import { TaskItem } from '@/features/todos/components/TaskItem'
 import { Todo } from '@/types'
 
 // Mock the translations

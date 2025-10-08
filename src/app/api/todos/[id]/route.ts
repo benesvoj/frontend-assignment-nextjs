@@ -31,7 +31,7 @@ export async function PUT(
         text,
         description,
         completed
-      }, user.id)
+      }, user.id, user.email!)
 
       if (!updatedTodo) {
         return NextResponse.json({ error: 'Todo not found' }, { status: 404 })

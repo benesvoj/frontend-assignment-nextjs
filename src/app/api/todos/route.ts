@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Get todos for the authenticated user
-      const userTodos = await getTodosByUserId(user.id)
+      const userTodos = await getTodosByUserId(user.id, user.email!)
 
       return NextResponse.json({
         success: true,
@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
         return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
       }
 
-      const newTodo = await addTodo(text, description, user.id)
+      const newTodo = await addTodo(text, description, user.id, user.email!)
 
       return NextResponse.json({
         success: true,

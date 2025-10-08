@@ -1,6 +1,8 @@
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import TaskFormPage from '@/app/todolist/[id]/page'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import React from 'react'
 
 // Mock Next.js router
 const mockPush = jest.fn()
@@ -42,6 +44,36 @@ jest.mock('@/features/todos/api/api', () => ({
   },
 }))
 
+// Mock the toast component
+jest.mock('@/components/ui/Toast', () => ({
+  showToast: {
+    success: jest.fn(),
+    error: jest.fn(),
+  },
+}))
+
+// Create a test query client
+const createTestQueryClient = () =>
+  new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+      },
+      mutations: {
+        retry: false,
+      },
+    },
+  })
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const testQueryClient = createTestQueryClient()
+  return render(
+    <QueryClientProvider client={testQueryClient}>
+      {ui}
+    </QueryClientProvider>
+  )
+}
+
 describe('TaskFormPage - Creating New Task', () => {
   beforeEach(() => {
     jest.clearAllMocks()
@@ -51,7 +83,7 @@ describe('TaskFormPage - Creating New Task', () => {
   })
 
   it('renders create task form with all required elements', () => {
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     expect(screen.getByText('New task')).toBeTruthy()
     expect(screen.getByLabelText('Task name')).toBeTruthy()
@@ -61,7 +93,7 @@ describe('TaskFormPage - Creating New Task', () => {
   })
 
   it('has correct placeholder text', () => {
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const taskNameInput = screen.getByPlaceholderText('Enter task name')
     const descriptionInput = screen.getByPlaceholderText('Enter task description')
@@ -72,7 +104,7 @@ describe('TaskFormPage - Creating New Task', () => {
 
   it('does not submit form when task name is empty due to HTML5 validation', async () => {
     const user = userEvent.setup()
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const submitButton = screen.getByRole('button', { name: 'Create task' })
     await user.click(submitButton)
@@ -86,7 +118,7 @@ describe('TaskFormPage - Creating New Task', () => {
 
   it('creates new task when form is submitted with valid data', async () => {
     const user = userEvent.setup()
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const taskNameInput = screen.getByLabelText('Task name')
     const descriptionInput = screen.getByLabelText('Description (Optional)')
@@ -111,7 +143,7 @@ describe('TaskFormPage - Creating New Task', () => {
 
   it('creates task without description when description is empty', async () => {
     const user = userEvent.setup()
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const taskNameInput = screen.getByLabelText('Task name')
     const submitButton = screen.getByRole('button', { name: 'Create task' })
@@ -134,7 +166,7 @@ describe('TaskFormPage - Creating New Task', () => {
 
   it('navigates back to todo list when discard button is clicked', async () => {
     const user = userEvent.setup()
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const discardButton = screen.getByRole('button', { name: 'Discard changes' })
     await user.click(discardButton)
@@ -147,7 +179,7 @@ describe('TaskFormPage - Creating New Task', () => {
     const { ApiError } = await import('@/features/todos/api/api')
     mockCreateTodo.mockRejectedValue(new ApiError(500, 'Server error'))
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     const taskNameInput = screen.getByLabelText('Task name')
     const submitButton = screen.getByRole('button', { name: 'Create task' })
@@ -175,7 +207,7 @@ describe('TaskFormPage - Editing Existing Task', () => {
     ]
     mockGetTodos.mockResolvedValueOnce({ success: true, todos: mockTodos })
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     // Wait for loading to complete
     await waitFor(() => {
@@ -197,7 +229,7 @@ describe('TaskFormPage - Editing Existing Task', () => {
     ]
     mockGetTodos.mockResolvedValue({ success: true, todos: mockTodos })
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     await waitFor(() => {
       expect(screen.getByDisplayValue('Original Task')).toBeTruthy()
@@ -232,7 +264,7 @@ describe('TaskFormPage - Editing Existing Task', () => {
   it('redirects to todo list if task not found', async () => {
     mockGetTodos.mockResolvedValue({ success: true, todos: [] })
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     await waitFor(() => {
       expect(mockPush).toHaveBeenCalledWith('/todolist')
@@ -243,7 +275,7 @@ describe('TaskFormPage - Editing Existing Task', () => {
     const { ApiError } = await import('@/features/todos/api/api')
     mockGetTodos.mockRejectedValueOnce(new ApiError(500, 'Failed to load task'))
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     await waitFor(() => {
       expect(screen.getByText('Failed to load task')).toBeTruthy()
@@ -260,7 +292,7 @@ describe('TaskFormPage - Authentication', () => {
   it('redirects to login when not authenticated', () => {
     mockIsAuthenticated = false
 
-    render(<TaskFormPage />)
+    renderWithQueryClient(<TaskFormPage />)
 
     expect(mockPush).toHaveBeenCalledWith('/login')
   })
@@ -268,7 +300,7 @@ describe('TaskFormPage - Authentication', () => {
   it('renders nothing while redirecting when not authenticated', () => {
     mockIsAuthenticated = false
 
-    const { container } = render(<TaskFormPage />)
+    const { container } = renderWithQueryClient(<TaskFormPage />)
 
     expect(container.firstChild).toBeNull()
   })

@@ -1,9 +1,9 @@
 import { render, screen } from "@testing-library/react";
-import { TodoSection } from "@/app/todolist/components/TodoSection";
+import { TodoSection } from "@/features/todos/components/TodoSection";
 import { Todo } from "@/types";
 
 // Mock the TaskItem component
-jest.mock("@/app/todolist/components/TaskItem", () => ({
+jest.mock("@/features/todos/components/TaskItem", () => ({
   TaskItem: ({
     todo,
     onToggle,
