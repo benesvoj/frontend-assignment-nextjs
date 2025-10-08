@@ -33,9 +33,9 @@ const mockUpdateTodo = jest.fn()
 
 jest.mock('@/features/todos/api/api', () => ({
   api: {
-    getTodos: (...args: Todo[]) => mockGetTodos(...args),
-    createTodo: (...args: Todo[]) => mockCreateTodo(...args),
-    updateTodo: (...args: Todo[]) => mockUpdateTodo(...args),
+    getTodos: (userEmail: string) => mockGetTodos(userEmail),
+    createTodo: (text: string, description?: string, userEmail?: string) => mockCreateTodo(text, description, userEmail),
+    updateTodo: (id: number, updates: Partial<Todo>, userEmail?: string) => mockUpdateTodo(id, updates, userEmail),
   },
   ApiError: class ApiError extends Error {
     constructor(public status: number, message: string) {
