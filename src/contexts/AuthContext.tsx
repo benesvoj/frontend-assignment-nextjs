@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import {User} from '@/types';
 import { createClient } from '@/lib/supabase';
 import { transformSupabaseUser } from '@/utils/userUtils';
+import { Session } from '@supabase/supabase-js';
 
 interface AuthContextType {
   user: User | null;
@@ -34,7 +35,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const supabase = createClient();
 
     // Check active session on mount
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(({ data: { session }, error  }: { data: { session: Session | null }, error: Error | null }) => {
       if (error) {
         console.error('Session error:', error);
         // Handle refresh token errors specifically
@@ -52,14 +53,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setError(null);
       }
       setLoading(false);
-    }).catch((err) => {
+    }).catch((err: Error) => {
       console.error('Failed to get session:', err);
       setError('Failed to load session');
       setLoading(false);
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: string, session: Session | null) => {
       if (event === 'TOKEN_REFRESHED') {
         console.log('Token refreshed');
       }

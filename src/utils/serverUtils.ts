@@ -24,7 +24,7 @@ export const getTodosByUserId = async (userId: string, userEmail: string): Promi
   }
 
   // Transform database todos to match frontend Todo interface
-  return (data || []).map(todo => ({
+  return (data || []).map((todo: Todo) => ({
     id: todo.id,
     text: todo.text,
     completed: todo.completed,
