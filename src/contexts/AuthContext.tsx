@@ -127,7 +127,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (data.user) {
-        setUser(transformSupabaseUser(data.user));
+        // Don't set user as authenticated until email is confirmed
+        // The user will need to log in after confirming their email
         return true;
       }
       return false;

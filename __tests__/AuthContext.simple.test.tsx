@@ -180,8 +180,9 @@ describe('AuthContext - Simple Tests', () => {
       })
 
       expect(success).toBe(true)
-      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
-      expect(result.current.isAuthenticated).toBe(true)
+      // After registration, user should not be automatically logged in
+      expect(result.current.user).toBeNull()
+      expect(result.current.isAuthenticated).toBe(false)
       expect(mockSignUp).toHaveBeenCalledWith({
         email: 'new@example.com',
         password: 'password123',
@@ -209,9 +210,9 @@ describe('AuthContext - Simple Tests', () => {
 
       const { result } = renderHook(() => useAuth(), { wrapper })
 
-      // First set a user
+      // First login a user (registration doesn't auto-login anymore)
       await act(async () => {
-        await result.current.register('test@example.com', 'password123', 'Test User')
+        await result.current.login('test@example.com', 'password123')
       })
 
       expect(result.current.isAuthenticated).toBe(true)

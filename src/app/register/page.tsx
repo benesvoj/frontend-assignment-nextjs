@@ -2,11 +2,12 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardBody, CardHeader, Input, Button, Link } from "@heroui/react";
+import { Card, CardBody, CardHeader, Input, Button, Link, Spinner } from "@heroui/react";
 import { useAuth } from "@/contexts/AuthContext";
 import { translations } from "@/utils";
 import { routes } from "@/routes/routes";
 import { TopBar } from "@/components/layout/TopBar";
+import { showToast } from "@/components/ui/Toast";
 
 export default function RegisterPage() {
   const [name, setName] = useState("");
@@ -14,6 +15,7 @@ export default function RegisterPage() {
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { register } = useAuth();
   const router = useRouter();
   const t = translations;
@@ -39,11 +41,23 @@ export default function RegisterPage() {
 
     const success = await register(email, password, name);
     if (success) {
-      router.push(routes.todoList);
+      showToast.success(t.register.successMessage);
+      setIsRedirecting(true);
+      router.push(routes.login);
     } else {
       setError(t.register.errorEmailAlreadyExists);
     }
   };
+
+  if (isRedirecting) {
+    return (
+      <Card>
+        <CardBody className="flex justify-center items-center py-8">
+          <Spinner size="lg" />
+        </CardBody>
+      </Card>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col px-4">

@@ -198,8 +198,9 @@ describe('AuthContext', () => {
       })
       expect(success).toBe(true)
 
-      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
-      expect(result.current.isAuthenticated).toBe(true)
+      // After registration, user should not be automatically logged in
+      expect(result.current.user).toBeNull()
+      expect(result.current.isAuthenticated).toBe(false)
     })
 
     it('successfully registers a new user', async () => {
@@ -220,8 +221,9 @@ describe('AuthContext', () => {
         await result.current.register('new@example.com', 'password123', 'New User')
       })
 
-      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
-      expect(result.current.isAuthenticated).toBe(true)
+      // After registration, user should not be automatically logged in
+      expect(result.current.user).toBeNull()
+      expect(result.current.isAuthenticated).toBe(false)
     })
   })
 
@@ -313,8 +315,9 @@ describe('AuthContext', () => {
       })
       expect(success).toBe(true)
 
-      expect(result.current.isAuthenticated).toBe(true)
-      expect(result.current.user).toEqual({ email: 'new@example.com', id: 'user-456', name: 'New User' })
+      // After registration, user should not be automatically logged in
+      expect(result.current.isAuthenticated).toBe(false)
+      expect(result.current.user).toBeNull()
 
       // Logout
       await act(async () => {

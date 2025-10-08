@@ -47,6 +47,7 @@ export const translations = {
 		errorPasswordMustBeAtLeast6Characters: "Password must be at least 6 characters",
 		errorEmailAlreadyExists: "Email already exists",
 		alreadyHaveAnAccount: "Already have an account?",
+		successMessage: "Registration successful! Please check your email to confirm your account.",
 	},
 	common: {
 		email: "Email",
@@ -65,5 +66,7 @@ export const translations = {
 		todoCreated: "Todo created successfully",
 		todoUpdated: "Todo updated successfully",
 		todoDeleted: "Todo deleted successfully",
+		logoutSuccess: "Logged out successfully",
+		loginSuccess: "Login successful! Redirecting to todo list...",
 	  },
 } as const;
