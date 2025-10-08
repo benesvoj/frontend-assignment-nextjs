@@ -67,5 +67,6 @@ export const translations = {
 		todoUpdated: "Todo updated successfully",
 		todoDeleted: "Todo deleted successfully",
 		logoutSuccess: "Logged out successfully",
+		loginSuccess: "Login successful! Redirecting to todo list...",
 	  },
 } as const;

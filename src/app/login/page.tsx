@@ -16,12 +16,14 @@ import { EyeIcon, EyeSlashIcon } from "@heroicons/react/16/solid";
 import { routes } from "@/routes/routes";
 import { translations } from "@/utils";
 import { TopBar } from "@/components/layout/TopBar";
+import { showToast } from "@/components/ui/Toast";
 
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [isVisible, setIsVisible] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
   const { login, loading, isAuthenticated, error: authError } = useAuth();
   const router = useRouter();
   const t = translations;
@@ -30,6 +32,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
+      setIsRedirecting(true);
       router.push(routes.todoList);
     }
   }, [isAuthenticated, router]);
@@ -46,18 +49,17 @@ export default function LoginPage() {
     const success = await login(email, password);
     if (success) {
       router.push(routes.todoList);
+      showToast.success(t.toast.loginSuccess);
     } else {
       setError(t.common.errorEmailOrPassword);
     }
   };
 
-  if (loading) {
+  if (loading || isRedirecting) {
     return (
-      <Card>
-        <CardBody className="flex justify-center items-center py-8">
-          <Spinner size="lg" />
-        </CardBody>
-      </Card>
+      <div className="flex justify-center items-center py-8">
+        <Spinner size="lg" />
+      </div>
     );
   }
 
@@ -111,16 +113,14 @@ export default function LoginPage() {
                   }
                 />
                 {(error || authError) && (
-                  <p className="text-sm text-red-500">
-                    {error || authError}
-                  </p>
+                  <p className="text-sm text-red-500">{error || authError}</p>
                 )}
               </div>
               <Button
                 type="submit"
                 color="primary"
                 className="w-full"
-                isLoading={loading}
+                isLoading={loading || isRedirecting}
                 data-testid="login-button"
               >
                 {t.button.login}
@@ -128,7 +128,11 @@ export default function LoginPage() {
             </form>
             <div className="text-center text-sm">
               {t.login.register}{" "}
-              <Link href={routes.register} className="text-blue-600" data-testid="register-link">
+              <Link
+                href={routes.register}
+                className="text-blue-600"
+                data-testid="register-link"
+              >
                 {t.button.register}
               </Link>
             </div>
