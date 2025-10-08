@@ -62,6 +62,7 @@ export const useToggleTodo = () => {
 
   return useMutation({
     mutationFn: async (id: number) => {
+      // Get the current todo from cache
       const todos = queryClient.getQueryData<Todo[]>(['todos', user?.email]);
       const todo = todos?.find((t) => t.id === id);
 
@@ -69,36 +70,26 @@ export const useToggleTodo = () => {
         throw new Error('Todo not found');
       }
 
+      // Toggle the current completed state
       const newCompleted = !todo.completed;
 
       return api.updateTodo(id, { completed: newCompleted }, user?.email);
     },
-    onMutate: async (id: number) => {
-      await queryClient.cancelQueries({ queryKey: ['todos', user?.email] });
-
-      const previousTodos = queryClient.getQueryData<Todo[]>(['todos', user?.email]);
-
-      queryClient.setQueryData<Todo[]>(['todos', user?.email], (old) =>
-        old?.map((todo) =>
-          todo.id === id ? { ...todo, completed: !todo.completed } : todo
-        )
-      );
-
-      return { previousTodos };
-    },
     onSuccess: (data, id) => {
+      // Update with server response
       queryClient.setQueryData<Todo[]>(['todos', user?.email], (prev) =>
-        prev?.map((todo) =>
-          todo.id === id ? data.todo : todo
-        )
+        prev?.map((todo) => {
+          if (todo.id === id) {
+            return data.todo;
+          }
+          return todo;
+        })
       );
       showToast.success(translations.toast.todoUpdated);
     },
-    onError: (err, _id, context) => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    onError: (err, _id) => {
       console.error('Toggle todo error:', err);
-      if (context?.previousTodos) {
-        queryClient.setQueryData(['todos', user?.email], context.previousTodos);
-      }
     },
   });
 };
