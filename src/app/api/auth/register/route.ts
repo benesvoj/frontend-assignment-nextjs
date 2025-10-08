@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
 import { findUserByEmail, addUser } from '@/utils/serverUtils'
+import { getUserDisplayName } from '@/utils/userUtils'
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,7 +44,7 @@ export async function POST(request: NextRequest) {
         success: true,
         user: {
           email: data.user.email,
-          name: data.user.user_metadata.name,
+          name: getUserDisplayName(data.user.user_metadata, data.user.email!),
           createdAt: data.user.created_at,
         }
       }, { status: 201 })
