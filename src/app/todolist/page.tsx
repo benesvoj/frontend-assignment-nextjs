@@ -3,7 +3,7 @@
 import {useRouter} from "next/navigation";
 import {Alert, Button, Card, CardBody, CardHeader, Spinner} from "@heroui/react";
 import {useAuth} from "@/contexts/AuthContext";
-import {PlusCircleIcon} from "@heroicons/react/16/solid";
+import {PlusIcon} from "@heroicons/react/16/solid";
 import {translations} from "@/utils";
 import Logo from "@/assets";
 import Image from "next/image";
@@ -11,6 +11,7 @@ import {TodoSection} from "@/features/todos/components/TodoSection";
 import {routes} from "@/routes/routes";
 import {useTodos} from "@/features/todos/hooks";
 import {useToggleTodo, useDeleteTodo} from "@/features/todos/hooks";
+import {CustomButton} from "@/components/ui/CustomButton";
 
 export default function TodoListPage() {
 	const {user, isAuthenticated} = useAuth();
@@ -68,15 +69,7 @@ export default function TodoListPage() {
 					</h1>
 					<p className="text-sm">{todayDate}</p>
 				</div>
-				<Button
-					color="primary"
-					size="sm"
-					className="w-full md:w-auto"
-					onPress={navigateToCreateTask}
-					endContent={<PlusCircleIcon className="w-4 h-4 md:w-4 md:h-4"/>}
-				>
-					{t.todoList.addButton}
-				</Button>
+				<CustomButton title={t.todoList.addButton} onPress={navigateToCreateTask} icon="plus"/>
 			</CardHeader>
 			<CardBody className="gap-6 px-6 pb-6">
 				{error && (
