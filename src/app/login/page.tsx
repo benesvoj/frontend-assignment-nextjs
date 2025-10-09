@@ -69,7 +69,7 @@ export default function LoginPage() {
         <TopBar />
       </div>
       <div className="flex items-center justify-center">
-        <Card className="w-full max-w-md shadow-lg bg-white rounded-2xl">
+        <Card className="w-full max-w-xl shadow-lg bg-white rounded-2xl">
           <CardHeader className="flex flex-col items-start gap-6 p-10">
             <h1 className="text-2xl font-bold">{t.login.title}</h1>
             <p className="text-sm text-gray-500 font-weight-400 line-height-16">
@@ -119,6 +119,7 @@ export default function LoginPage() {
               <Button
                 type="submit"
                 color="primary"
+                radius="full"
                 className="w-full"
                 isLoading={loading || isRedirecting}
                 data-testid="login-button"

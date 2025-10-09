@@ -65,7 +65,7 @@ export default function RegisterPage() {
         <TopBar />
       </div>
       <div className="flex items-center justify-center">
-        <Card className="w-full max-w-md">
+        <Card className="w-full max-w-xl">
         <CardHeader className="flex flex-col items-start gap-6 p-10">
           <h1 className="text-2xl font-bold">{t.register.title}</h1>
           <p className="text-sm text-gray-500">{t.register.signUp}</p>
@@ -111,7 +111,7 @@ export default function RegisterPage() {
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
-            <Button type="submit" color="primary" className="w-full" data-testid="register-button">
+            <Button type="submit"  radius="full" color="primary" className="w-full" data-testid="register-button">
               {t.button.register}
             </Button>
           </form>
