@@ -111,7 +111,7 @@ export default function RegisterPage() {
               />
               {error && <p className="text-sm text-red-500">{error}</p>}
             </div>
-            <Button type="submit"  radius="full" color="primary" className="w-full" data-testid="register-button">
+            <Button type="submit" radius="full" color="primary" className="w-full" data-testid="register-button">
               {t.button.register}
             </Button>
           </form>

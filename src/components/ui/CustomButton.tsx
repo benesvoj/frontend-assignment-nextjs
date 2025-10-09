@@ -26,7 +26,7 @@ export const CustomButton = ({ title, onPress, color, icon, loading, disabled, t
 			size="sm"
 			className="w-full md:w-auto px-5 py-2.5"
 			radius="full"
-			onPress={() => onPress ? onPress() : null}
+			onPress={onPress}
 			endContent={icon ? iconMap[icon] : null}
 			isLoading={loading || false}
 			isDisabled={disabled || false}
