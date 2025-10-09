@@ -28,8 +28,8 @@ export const CustomButton = ({ title, onPress, color, icon, loading, disabled, t
 			radius="full"
 			onPress={onPress}
 			endContent={icon ? iconMap[icon] : null}
-			isLoading={loading || false}
-			isDisabled={disabled || false}
+			isLoading={loading}
+			isDisabled={disabled}
 		>
 			{title}
 		</Button>
